@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FlowGuide AI — Sprint 1
 
-## Getting Started
+MVP: texto operativo desordenado → guía + quick guide + FAQ + quiz, con cuentas multi-empresa,
+control de acceso por rol, biblioteca de guías, panel admin, y flujo de usuario final (pregunta
+libre interpretada por IA + chips de módulo).
 
-First, run the development server:
+## 1. Crear el proyecto de Supabase
+
+1. Entra a [supabase.com](https://supabase.com) → **New project** (tier gratuito alcanza para el
+   piloto).
+2. Cuando termine de aprovisionar, ve a **Project Settings → API** y copia:
+   - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
+   - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (nunca la expongas al navegador)
+3. Pega esos tres valores en `.env.local` (ya existe en la raíz del proyecto, creado a partir de
+   `.env.local.example`).
+
+## 2. Correr las migraciones
+
+En el panel de Supabase, ve a **SQL Editor** y corre, en este orden, el contenido completo de:
+
+1. `supabase/migrations/0001_schema.sql`
+2. `supabase/migrations/0002_rls.sql`
+
+## 3. Obtener la API key de Anthropic
+
+1. Entra a [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys) y
+   crea una key.
+2. Pégala en `.env.local` como `ANTHROPIC_API_KEY`.
+
+## 4. Crear tu primer usuario y empresa de prueba
+
+Sprint 1 no tiene self-signup público (los usuarios se crean por invitación). Para probar:
+
+1. En Supabase, **Authentication → Users → Add user**, crea un usuario con email/contraseña.
+   Copia su UUID.
+2. En **SQL Editor**, abre `supabase/bootstrap_example.sql`, reemplaza los placeholders
+   (`<PARTNER_ID>`, `<CLIENT_COMPANY_ID>`, `<USER_UUID>`) y corre cada `insert` en orden.
+
+## 5. Correr la app
 
 ```bash
+npm install   # ya se corrió una vez al construir el scaffold
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000), inicia sesión con el usuario que creaste.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 6. Probar el flujo completo
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Admin**: entra a la empresa → **Admin** → **+ Nueva guía** → pega un texto desordenado de
+   ejemplo (explicación de un proceso) → generar. Debe aparecer en la biblioteca.
+2. **Usuario final**: ve a **Aprender**, escribe una pregunta con tus propias palabras (sin usar
+   los términos exactos del título de la guía) y confirma que la IA la encuentra igual. Abre la
+   guía (queda registrada en `guide_reads`), toma el examen (queda registrado en
+   `quiz_attempts`).
+3. **Reporte**: vuelve a **Admin → [la guía]** y confirma que aparece la lectura y el intento de
+   examen.
+4. **Aislamiento entre empresas**: crea una segunda `client_company` (y opcionalmente otro
+   usuario con acceso solo a esa empresa) y confirma que las guías de una no se filtran a la
+   otra.
 
-## Learn More
+## Estructura
 
-To learn more about Next.js, take a look at the following resources:
+- `supabase/migrations/` — esquema SQL y políticas de Row Level Security.
+- `src/lib/supabase/` — clientes de Supabase (browser, server, admin/service-role).
+- `src/lib/anthropic.ts` — generación de guías y matching de intención vía Claude API.
+- `src/lib/auth.ts` — helpers de sesión, empresa activa y rol efectivo.
+- `src/proxy.ts` — protección de rutas `/app/**` y `/print/**` (Next.js 16 renombró Middleware a
+  Proxy).
+- `src/app/app/[companyId]/admin/` — panel admin (biblioteca, crear/editar guía, reportes).
+- `src/app/app/[companyId]/learn/` — flujo de usuario final (Camino A + B, guía, quiz).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Decisiones de scope (Sprint 1)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- UI en español; el campo `language` por guía controla el idioma del contenido generado.
+- Export a PDF vía vista imprimible (`/print/[guideId]` + "Guardar como PDF" del navegador) en
+  vez de un generador de PDF pesado en servidor. Export a Markdown también disponible.
+- Sin self-signup: usuarios se crean por invitación (ver paso 4).

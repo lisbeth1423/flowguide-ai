@@ -42,6 +42,29 @@ as $$
   );
 $$;
 
+-- Effective role for the current user in a company: partner_admins always act as 'admin',
+-- otherwise fall back to their explicit user_client_access row. Used by the app (not by policies).
+create or replace function my_role(target_company_id uuid)
+returns text
+language sql
+security definer
+stable
+as $$
+  select coalesce(
+    (
+      select 'admin' from partner_admins pa
+      join client_companies cc on cc.partner_id = pa.partner_id
+      where cc.id = target_company_id and pa.user_id = auth.uid()
+      limit 1
+    ),
+    (
+      select role from user_client_access uca
+      where uca.client_company_id = target_company_id and uca.user_id = auth.uid()
+      limit 1
+    )
+  );
+$$;
+
 alter table partners enable row level security;
 alter table client_companies enable row level security;
 alter table partner_admins enable row level security;

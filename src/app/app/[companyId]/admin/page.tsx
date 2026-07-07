@@ -1,0 +1,115 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { requireCompanyAccess, canManageGuides } from "@/lib/auth";
+
+export default async function AdminPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ companyId: string }>;
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { companyId } = await params;
+  const { supabase, role } = await requireCompanyAccess(companyId);
+  if (!canManageGuides(role)) redirect(`/app/${companyId}/learn`);
+
+  const { q } = await searchParams;
+
+  let query = supabase
+    .from("guides")
+    .select("id, title, module, language, created_at")
+    .eq("client_company_id", companyId)
+    .order("created_at", { ascending: false });
+
+  if (q) query = query.ilike("title", `%${q}%`);
+
+  const { data: guides, error } = await query;
+  if (error) throw error;
+
+  const guideIds = guides?.map((g) => g.id) ?? [];
+
+  const [{ data: reads }, { data: attempts }] = await Promise.all([
+    guideIds.length
+      ? supabase.from("guide_reads").select("guide_id").in("guide_id", guideIds)
+      : Promise.resolve({ data: [] as { guide_id: string }[] }),
+    guideIds.length
+      ? supabase
+          .from("quiz_attempts")
+          .select("quiz_id, score, passed, quizzes!inner(guide_version_id, guide_versions!inner(guide_id))")
+          .eq("client_company_id", companyId)
+      : Promise.resolve({ data: [] as { quiz_id: string }[] }),
+  ]);
+
+  const readCounts = new Map<string, number>();
+  for (const r of reads ?? []) {
+    readCounts.set(r.guide_id, (readCounts.get(r.guide_id) ?? 0) + 1);
+  }
+
+  const attemptCounts = new Map<string, number>();
+  for (const a of (attempts ?? []) as unknown as {
+    quizzes: { guide_versions: { guide_id: string } };
+  }[]) {
+    const guideId = a.quizzes?.guide_versions?.guide_id;
+    if (guideId) attemptCounts.set(guideId, (attemptCounts.get(guideId) ?? 0) + 1);
+  }
+
+  return (
+    <div>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-lg font-semibold text-neutral-900">Biblioteca de guías</h1>
+        <Link
+          href={`/app/${companyId}/admin/guides/new`}
+          className="rounded bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+        >
+          + Nueva guía
+        </Link>
+      </div>
+
+      <form className="mb-4">
+        <input
+          type="text"
+          name="q"
+          defaultValue={q ?? ""}
+          placeholder="Buscar por título..."
+          className="w-full max-w-sm rounded border border-neutral-300 px-3 py-2 text-sm"
+        />
+      </form>
+
+      {!guides?.length ? (
+        <p className="text-sm text-neutral-500">Todavía no hay guías. Crea la primera.</p>
+      ) : (
+        <div className="overflow-hidden rounded border border-neutral-200 bg-white">
+          <table className="w-full text-sm">
+            <thead className="bg-neutral-50 text-left text-xs uppercase text-neutral-500">
+              <tr>
+                <th className="px-4 py-2">Título</th>
+                <th className="px-4 py-2">Módulo</th>
+                <th className="px-4 py-2">Idioma</th>
+                <th className="px-4 py-2">Lecturas</th>
+                <th className="px-4 py-2">Intentos de examen</th>
+              </tr>
+            </thead>
+            <tbody>
+              {guides.map((guide) => (
+                <tr key={guide.id} className="border-t border-neutral-100">
+                  <td className="px-4 py-2">
+                    <Link
+                      href={`/app/${companyId}/admin/guides/${guide.id}`}
+                      className="font-medium text-neutral-900 hover:underline"
+                    >
+                      {guide.title}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 text-neutral-500">{guide.module ?? "—"}</td>
+                  <td className="px-4 py-2 text-neutral-500">{guide.language}</td>
+                  <td className="px-4 py-2 text-neutral-500">{readCounts.get(guide.id) ?? 0}</td>
+                  <td className="px-4 py-2 text-neutral-500">{attemptCounts.get(guide.id) ?? 0}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
