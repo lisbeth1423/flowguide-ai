@@ -1,3 +1,12 @@
+// Formulario "Nueva guía desde texto". Es un componente de CLIENTE ("use client":
+// corre en el navegador, no en el servidor) porque necesita mostrar el estado de
+// "Generando guía..." mientras espera la respuesta de la IA — eso solo se puede
+// hacer con interactividad del lado del navegador.
+//
+// Al enviar el formulario, llama a POST /api/guides/generate (ver
+// src/app/api/guides/generate/route.ts), que es donde realmente se habla con Claude
+// y se guarda todo en la base de datos. Este archivo solo arma el pedido y muestra
+// el resultado/error.
 "use client";
 
 import { useState } from "react";

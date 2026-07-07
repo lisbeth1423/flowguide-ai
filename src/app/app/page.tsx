@@ -1,3 +1,13 @@
+// Pantalla "Elige una empresa" (/app). Aparece cuando un usuario tiene acceso a más
+// de una empresa cliente (un partner que atiende a varios clientes, por ejemplo).
+//
+// Reglas de "atajo" para no mostrar esta pantalla innecesariamente:
+//   - Si el usuario solo tiene UNA empresa, lo mandamos derecho a esa (nunca ve esta
+//     pantalla).
+//   - Si tiene varias pero ya había elegido una antes (guardada en la cookie
+//     "active_company_id" por selectCompany en ./actions.ts) y todavía tiene acceso
+//     a ella, lo mandamos ahí directo también.
+//   - Si no aplica ninguna de las anteriores, recién ahí se muestra la lista para elegir.
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAccessibleCompanies } from "@/lib/auth";

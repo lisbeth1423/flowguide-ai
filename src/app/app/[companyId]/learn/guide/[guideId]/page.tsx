@@ -1,3 +1,13 @@
+// Página donde el usuario final lee una guía. Primero muestra el "quick guide"
+// (resumen accionable) y desde ahí se puede expandir a la guía completa + FAQ
+// (eso lo maneja el componente GuideBody, en ./guide-body.tsx). Desde acá también
+// se entra al examen (quiz/page.tsx) y se puede exportar la guía.
+//
+// Cada vez que alguien ABRE esta página se inserta una fila en "guide_reads" (ver
+// más abajo) — así es como el panel admin sabe "quién ha leído esta guía". Ojo: se
+// registra en cada visita, no una sola vez por usuario (si alguien la abre 3 veces,
+// quedan 3 registros) — es una decisión a propósito, para poder ver también CUÁNDO
+// vuelve la gente a consultarla.
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireCompanyAccess } from "@/lib/auth";

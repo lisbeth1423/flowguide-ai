@@ -1,6 +1,20 @@
+// Endpoint: POST /api/quiz-attempts
+//
+// Corrige un examen y guarda el resultado. Lo llama el formulario del quiz
+// (src/app/app/[companyId]/learn/guide/[guideId]/quiz/quiz-form.tsx) cuando el
+// usuario final aprieta "Enviar examen".
+//
+// IMPORTANTE por seguridad: la corrección se hace ACÁ, en el servidor, comparando
+// las respuestas del usuario contra "quizzes.questions" (que vive en la base de
+// datos). Nunca se confía en un "score" que venga calculado desde el navegador,
+// porque cualquiera podría manipularlo con las herramientas de desarrollador del
+// navegador y "aprobar" sin saber nada.
+//
+// Si quieren cambiar el % mínimo para aprobar, se cambia PASS_THRESHOLD acá abajo.
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 
+// Porcentaje mínimo de respuestas correctas para considerar el examen "aprobado".
 const PASS_THRESHOLD = 70;
 
 export async function POST(request: Request) {
@@ -8,6 +22,7 @@ export async function POST(request: Request) {
   const body = await request.json();
   const quizId = String(body.quizId ?? "");
   const clientCompanyId = String(body.clientCompanyId ?? "");
+  // answers[i] = índice de la opción que eligió el usuario para la pregunta i.
   const answers = Array.isArray(body.answers) ? (body.answers as number[]) : [];
 
   if (!quizId || !clientCompanyId) {

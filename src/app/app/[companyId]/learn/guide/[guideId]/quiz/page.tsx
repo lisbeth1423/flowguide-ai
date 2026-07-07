@@ -1,3 +1,8 @@
+// Página del examen de una guía. Trae las preguntas desde la base de datos y se las
+// pasa a QuizForm (./quiz-form.tsx) — OJO: le saca el campo "respuesta_correcta_index"
+// antes de mandarlo al navegador, para que un usuario curioso no pueda ver la
+// respuesta correcta abriendo las herramientas de desarrollador. La corrección real
+// pasa en el servidor (src/app/api/quiz-attempts/route.ts).
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireCompanyAccess } from "@/lib/auth";

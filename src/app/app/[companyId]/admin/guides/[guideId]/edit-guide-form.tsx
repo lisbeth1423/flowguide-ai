@@ -1,3 +1,14 @@
+// Formulario completo para editar una guía a mano: título, módulo, quick guide,
+// objetivo, precondiciones, pasos, advertencias, resultado esperado, FAQ y quiz.
+//
+// Recibe el contenido actual en "initial" (lo carga la página, page.tsx, desde la
+// base de datos) y lo guarda todo junto en un solo objeto de estado ("form"). Al
+// apretar "Guardar cambios" manda TODO el objeto a PATCH /api/guides/[guideId]
+// (ver src/app/api/guides/[guideId]/route.ts), que decide qué actualizar.
+//
+// Si quieren agregar un campo nuevo a la guía (por ejemplo "tiempo estimado"), hay
+// que: 1) agregarlo al tipo "Initial" acá abajo, 2) agregar el <input> correspondiente
+// en el JSX, 3) agregar la columna en la base de datos y en el PATCH del backend.
 "use client";
 
 import { useState } from "react";

@@ -1,3 +1,10 @@
+// Página principal del panel admin (/app/[companyId]/admin): la "biblioteca de guías".
+// Muestra una tabla con todas las guías de la empresa, con buscador por título, y
+// cuántas veces se leyó / se tomó el examen de cada una (conteos, no el detalle —
+// el detalle de "quién" está en la página de cada guía: admin/guides/[guideId]/page.tsx).
+//
+// Solo entra acá quien tiene rol "admin" o "editor" (canManageGuides) — un "viewer" o
+// "aprendiz" que intente entrar por URL es redirigido a la vista de aprendizaje.
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireCompanyAccess, canManageGuides } from "@/lib/auth";
@@ -28,6 +35,11 @@ export default async function AdminPage({
 
   const guideIds = guides?.map((g) => g.id) ?? [];
 
+  // Trae TODAS las lecturas e intentos de examen de estas guías, y después los
+  // contamos "a mano" en JavaScript (readCounts / attemptCounts, abajo). Para pocas
+  // guías/lecturas (lo normal en el piloto) es rápido y simple; si la empresa
+  // acumula miles de lecturas, convendría mover este conteo a una consulta SQL
+  // con GROUP BY en vez de traer todas las filas.
   const [{ data: reads }, { data: attempts }] = await Promise.all([
     guideIds.length
       ? supabase.from("guide_reads").select("guide_id").in("guide_id", guideIds)

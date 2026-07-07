@@ -1,3 +1,7 @@
+// Dibuja el contenido de una guía: primero SIEMPRE el "quick guide" (resumen corto),
+// y un botón "Ver guía completa..." que expande el resto (objetivo, precondiciones,
+// pasos, advertencias, resultado esperado, FAQ). Empieza colapsado a propósito, para
+// que el usuario final no se enfrente a un muro de texto si el resumen ya le alcanza.
 "use client";
 
 import { useState } from "react";

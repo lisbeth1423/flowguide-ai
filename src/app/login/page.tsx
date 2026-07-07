@@ -1,3 +1,10 @@
+// Pantalla de login (/login). No hay "crear cuenta" acá a propósito: en este Sprint 1
+// los usuarios se crean por invitación desde Supabase (ver README.md, sección 4), no
+// con un formulario público de registro.
+//
+// Si quieren cambiar el texto, logo o colores de esta pantalla, es este archivo.
+// Los estilos (className="...") son clases de Tailwind CSS: por ejemplo "bg-neutral-900"
+// es un color de fondo, "text-sm" es tamaño de letra chico, etc.
 import { login } from "./actions";
 
 export default async function LoginPage({

@@ -1,3 +1,10 @@
+// Pantalla principal del usuario final: "¿Qué necesitas resolver hoy?".
+// Combina los dos caminos que pedía el documento original del proyecto:
+//   - Camino A (el principal): el buscador de texto libre, componente LearnSearch
+//     (./learn-search.tsx), que usa la IA para interpretar la pregunta.
+//   - Camino B (respaldo): los "chips" de módulo de acá abajo, agrupando las guías
+//     por su campo "module" — para cuando el usuario no sabe cómo describir lo que
+//     busca y prefiere navegar por categoría.
 import Link from "next/link";
 import { requireCompanyAccess } from "@/lib/auth";
 import { LearnSearch } from "./learn-search";

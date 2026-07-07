@@ -1,3 +1,11 @@
+// Vista "para imprimir / PDF" de una guía. Es una página aparte y más simple
+// (sin el menú de arriba de la app) para que al imprimir o "Guardar como PDF" desde
+// el navegador, salga solo el contenido de la guía, sin botones ni menús alrededor.
+//
+// Nota: esta página vive en /print/[guideId] (fuera de /app/[companyId]/...) a
+// propósito, para no arrastrar el encabezado del layout de empresa
+// (src/app/app/[companyId]/layout.tsx). Por eso vuelve a verificar el login acá
+// (requireUser) en vez de depender del layout de la empresa.
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { PrintButton } from "./print-button";

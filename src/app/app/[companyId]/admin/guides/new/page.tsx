@@ -1,3 +1,6 @@
+// Página "Nueva guía desde texto". Es solo el título/descripción de arriba: el
+// formulario en sí (donde está toda la lógica de pegar texto y llamar a la IA) es
+// el componente NewGuideForm, en ./new-guide-form.tsx.
 import { redirect } from "next/navigation";
 import { requireCompanyAccess, canManageGuides } from "@/lib/auth";
 import { NewGuideForm } from "./new-guide-form";

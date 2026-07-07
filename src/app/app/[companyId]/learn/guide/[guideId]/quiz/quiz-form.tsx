@@ -1,3 +1,7 @@
+// Formulario del examen: preguntas de opción múltiple con botón "Enviar examen".
+// Al enviarlo, manda las respuestas elegidas a POST /api/quiz-attempts, que corrige
+// del lado del servidor y devuelve el puntaje — este componente no calcula nada,
+// solo muestra el resultado que le llega.
 "use client";
 
 import { useState } from "react";

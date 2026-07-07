@@ -1,3 +1,14 @@
+// Página de detalle de una guía dentro del panel admin. Junta 3 cosas en una sola
+// pantalla:
+//   1. El formulario de edición completo (componente EditGuideForm, en
+//      ./edit-guide-form.tsx) — título, pasos, FAQ, quiz, todo editable.
+//   2. La lista de "quién ha leído esta guía" (tabla guide_reads).
+//   3. La lista de "intentos de examen" con su nota (tabla quiz_attempts).
+//
+// Detalle técnico: la tabla de usuarios de Supabase Auth no se puede leer con el
+// cliente normal (por seguridad), así que para mostrar el EMAIL de cada lector/quien
+// tomó el examen (en vez de un ID largo sin sentido) usamos createAdminClient()
+// (src/lib/supabase/admin.ts), que sí tiene permiso para consultarla.
 import { redirect, notFound } from "next/navigation";
 import { requireCompanyAccess, canManageGuides } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";

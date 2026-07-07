@@ -1,3 +1,7 @@
+// Botón que abre el diálogo de impresión del navegador (window.print()). El propio
+// navegador ofrece "Guardar como PDF" ahí — no generamos el PDF nosotros, aprovechamos
+// esa función que ya trae Chrome/Edge/Firefox. El botón se oculta al imprimir de verdad
+// (ver la clase "print:hidden" en page.tsx) para que no salga en la hoja/PDF final.
 "use client";
 
 export function PrintButton() {

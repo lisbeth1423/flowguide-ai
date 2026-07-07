@@ -1,3 +1,15 @@
+// Este layout envuelve TODAS las páginas bajo /app/[companyId]/... (admin y learn).
+// Hace dos cosas clave:
+//   1. Llama a requireCompanyAccess: si el usuario no tiene acceso a esta empresa,
+//      lo redirige antes de mostrar nada (ver src/lib/auth.ts).
+//   2. Dibuja el encabezado con el nombre de la empresa, el rol del usuario, y los
+//      links de navegación (Aprender / Admin / Cambiar empresa / Salir).
+//
+// El link "Admin" solo se muestra si canManageGuides(role) da true (o sea, admin o
+// editor) — así un "aprendiz" ni siquiera ve la opción de entrar al panel admin.
+//
+// Si quieren cambiar el menú de arriba (agregar un link nuevo, cambiar el orden),
+// es en el <nav> de acá abajo.
 import Link from "next/link";
 import { requireCompanyAccess, canManageGuides } from "@/lib/auth";
 import { logout } from "@/app/login/actions";

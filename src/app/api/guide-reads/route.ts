@@ -1,3 +1,14 @@
+// Endpoint: POST /api/guide-reads
+//
+// Registra "este usuario abrió esta guía" en la tabla guide_reads (para el reporte
+// de "quién ha leído qué" del panel admin).
+//
+// ⚠️ Aviso para quien mantenga esto: HOY este endpoint no lo llama nadie. El registro
+// de lectura se hace directo dentro de la página de la guía
+// (src/app/app/[companyId]/learn/guide/[guideId]/page.tsx, que corre en el servidor y
+// puede insertar en la base de datos sin pasar por una API). Este archivo quedó armado
+// por si en el futuro se necesita registrar la lectura desde el navegador (por ejemplo,
+// si agregan una app tipo "quiosco" o una vista que no sea una página de servidor).
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 

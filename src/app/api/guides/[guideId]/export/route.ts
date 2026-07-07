@@ -1,3 +1,14 @@
+// Endpoint: GET /api/guides/[guideId]/export
+//
+// Genera un archivo .md (Markdown, un formato de texto plano con formato simple)
+// para descargar la guía. Lo usa el botón "Descargar Markdown" en la vista de guía
+// (src/app/app/[companyId]/learn/guide/[guideId]/page.tsx).
+//
+// Si en el futuro quieren cambiar el formato del archivo exportado (por ejemplo,
+// agregar un logo o cambiar el orden de las secciones), es acá donde se arma el
+// texto "markdown" de abajo. La otra forma de exportar (a PDF) es la vista imprimible
+// en src/app/print/[guideId]/page.tsx — son dos caminos separados para el mismo
+// contenido, no hace falta tocar los dos si solo quieren cambiar uno.
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 

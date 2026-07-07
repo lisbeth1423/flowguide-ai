@@ -1,3 +1,9 @@
+// Buscador de texto libre del usuario final ("Camino A"). Al escribir su pregunta y
+// enviarla, llama a POST /api/guides/match (src/app/api/guides/match/route.ts), que
+// usa la IA para decidir si hay una guía clara, varias posibles, o ninguna:
+//   - "single"   -> se abre esa guía directo (router.push).
+//   - "multiple" -> se muestran 2-4 tarjetas tipo "¿Te refieres a...?".
+//   - "none"     -> se avisa que no se encontró nada.
 "use client";
 
 import { useState } from "react";
