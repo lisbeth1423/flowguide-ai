@@ -8,6 +8,12 @@
 // registra en cada visita, no una sola vez por usuario (si alguien la abre 3 veces,
 // quedan 3 registros) — es una decisión a propósito, para poder ver también CUÁNDO
 // vuelve la gente a consultarla.
+//
+// La guía puede ser propia de esta empresa O una guía genérica de la plataforma (ver
+// supabase/migrations/0004_generic_content.sql) — por eso el filtro de abajo acepta
+// las dos posibilidades en vez de solo "client_company_id = companyId". El guide_read
+// igual se guarda con el companyId de quien la está leyendo, no importa si la guía es
+// genérica o no — así el reporte de esta empresa sigue siendo consistente.
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireCompanyAccess } from "@/lib/auth";
@@ -27,7 +33,7 @@ export default async function GuidePage({
       "id, title, module, guide_versions:current_version_id(id, objetivo, precondiciones, pasos, advertencias, resultado_esperado, quick_guide, faq)"
     )
     .eq("id", guideId)
-    .eq("client_company_id", companyId)
+    .or(`client_company_id.eq.${companyId},is_generic.eq.true`)
     .maybeSingle();
   if (error) throw error;
   if (!guide) notFound();
@@ -49,18 +55,18 @@ export default async function GuidePage({
   });
 
   if (!version) {
-    return <p className="text-sm text-neutral-500">Esta guía todavía no tiene contenido.</p>;
+    return <p className="text-sm text-muted">Esta guía todavía no tiene contenido.</p>;
   }
 
   const hasQuiz = Boolean(quiz?.questions && (quiz.questions as unknown[]).length > 0);
 
   return (
     <div className="mx-auto max-w-2xl">
-      <Link href={`/app/${companyId}/learn`} className="text-sm text-neutral-500 hover:underline">
+      <Link href={`/app/${companyId}/learn`} className="text-sm text-muted hover:underline">
         ← Volver
       </Link>
-      <h1 className="mb-1 mt-2 text-xl font-semibold text-neutral-900">{guide.title}</h1>
-      {guide.module && <p className="mb-6 text-sm text-neutral-400">Módulo: {guide.module}</p>}
+      <h1 className="mb-1 mt-2 text-xl font-semibold text-foreground">{guide.title}</h1>
+      {guide.module && <p className="mb-6 text-sm text-muted">Módulo: {guide.module}</p>}
 
       <GuideBody
         quickGuide={version.quick_guide ?? ""}
@@ -76,7 +82,7 @@ export default async function GuidePage({
         {hasQuiz && (
           <Link
             href={`/app/${companyId}/learn/guide/${guideId}/quiz`}
-            className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+            className="rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90"
           >
             Tomar examen
           </Link>

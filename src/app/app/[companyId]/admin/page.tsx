@@ -8,6 +8,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireCompanyAccess, canManageGuides } from "@/lib/auth";
+import { CompanySystemField } from "./company-system-field";
 
 export default async function AdminPage({
   params,
@@ -17,7 +18,7 @@ export default async function AdminPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { companyId } = await params;
-  const { supabase, role } = await requireCompanyAccess(companyId);
+  const { supabase, role, company } = await requireCompanyAccess(companyId);
   if (!canManageGuides(role)) redirect(`/app/${companyId}/learn`);
 
   const { q } = await searchParams;
@@ -67,14 +68,28 @@ export default async function AdminPage({
 
   return (
     <div>
+      {role === "admin" && (
+        <CompanySystemField companyId={companyId} initialSystem={company.system ?? ""} />
+      )}
+
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-neutral-900">Biblioteca de guías</h1>
-        <Link
-          href={`/app/${companyId}/admin/guides/new`}
-          className="rounded bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:bg-neutral-800"
-        >
-          + Nueva guía
-        </Link>
+        <h1 className="text-lg font-semibold text-foreground">Biblioteca de guías</h1>
+        <div className="flex gap-2">
+          {role === "admin" && (
+            <Link
+              href={`/app/${companyId}/admin/users`}
+              className="rounded border border-neutral-300 px-3 py-2 text-sm text-neutral-700 hover:border-neutral-500"
+            >
+              Usuarios
+            </Link>
+          )}
+          <Link
+            href={`/app/${companyId}/admin/guides/new`}
+            className="rounded bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary/90"
+          >
+            + Nueva guía
+          </Link>
+        </div>
       </div>
 
       <form className="mb-4">
@@ -88,11 +103,11 @@ export default async function AdminPage({
       </form>
 
       {!guides?.length ? (
-        <p className="text-sm text-neutral-500">Todavía no hay guías. Crea la primera.</p>
+        <p className="text-sm text-muted">Todavía no hay guías. Crea la primera.</p>
       ) : (
         <div className="overflow-hidden rounded border border-neutral-200 bg-white">
           <table className="w-full text-sm">
-            <thead className="bg-neutral-50 text-left text-xs uppercase text-neutral-500">
+            <thead className="bg-background text-left text-xs uppercase text-muted">
               <tr>
                 <th className="px-4 py-2">Título</th>
                 <th className="px-4 py-2">Módulo</th>
@@ -107,15 +122,15 @@ export default async function AdminPage({
                   <td className="px-4 py-2">
                     <Link
                       href={`/app/${companyId}/admin/guides/${guide.id}`}
-                      className="font-medium text-neutral-900 hover:underline"
+                      className="font-medium text-foreground hover:underline"
                     >
                       {guide.title}
                     </Link>
                   </td>
-                  <td className="px-4 py-2 text-neutral-500">{guide.module ?? "—"}</td>
-                  <td className="px-4 py-2 text-neutral-500">{guide.language}</td>
-                  <td className="px-4 py-2 text-neutral-500">{readCounts.get(guide.id) ?? 0}</td>
-                  <td className="px-4 py-2 text-neutral-500">{attemptCounts.get(guide.id) ?? 0}</td>
+                  <td className="px-4 py-2 text-muted">{guide.module ?? "—"}</td>
+                  <td className="px-4 py-2 text-muted">{guide.language}</td>
+                  <td className="px-4 py-2 text-muted">{readCounts.get(guide.id) ?? 0}</td>
+                  <td className="px-4 py-2 text-muted">{attemptCounts.get(guide.id) ?? 0}</td>
                 </tr>
               ))}
             </tbody>

@@ -87,11 +87,21 @@ const GUIDE_SCHEMA = {
   ],
 };
 
-// Le pide a Claude que convierta un texto desordenado (pegado por un admin) en una
-// guía estructurada. La llama la ruta POST /api/guides/generate.
+// Una captura de pantalla (u otra imagen suelta) que el admin sube junto con el texto,
+// para que la IA la "vea" como referencia extra al armar la guía. mediaType es el tipo
+// de archivo (ej. "image/png"); base64 es el archivo codificado en base64 (sin el
+// prefijo "data:image/png;base64,", solo los datos).
+export type ImageAttachment = { mediaType: "image/png" | "image/jpeg" | "image/webp"; base64: string };
+
+// Le pide a Claude que convierta un texto desordenado (pegado por un admin, o extraído
+// de un link/PDF) en una guía estructurada. Opcionalmente puede recibir capturas de
+// pantalla sueltas (images) que Claude "ve" directamente junto con el texto — útil
+// cuando el texto solo no alcanza para explicar un paso (ej. dónde está un botón).
+// La llama la ruta POST /api/guides/generate.
 export async function generateGuide(
   rawText: string,
-  language: "es" | "en"
+  language: "es" | "en",
+  images: ImageAttachment[] = []
 ): Promise<GeneratedGuide> {
   const languageLabel = language === "es" ? "español" : "inglés";
 
@@ -102,11 +112,11 @@ export async function generateGuide(
     // antes de ver el texto del usuario. Es el lugar para ajustar el "tono" o las
     // reglas de la guía generada (por ejemplo, si quieren pedir más ejemplos, o
     // prohibir cierto tipo de contenido).
-    system: `Eres un redactor técnico que convierte texto operativo desordenado (explicaciones de cómo un equipo usa su ERP/POS/sistema de gestión) en una guía clara y verificable.
+    system: `Eres un redactor técnico que convierte texto operativo desordenado (explicaciones de cómo un equipo usa su ERP/POS/sistema de gestión) en una guía clara y verificable. A veces también recibirás capturas de pantalla como referencia adicional: úsalas para precisar nombres de botones/menús exactos, pero la fuente principal de verdad sigue siendo el texto.
 
 Reglas estrictas:
 - Máximo 6 pasos, máximo 2 preguntas de FAQ, máximo 3 preguntas de quiz.
-- No inventes información que no esté implícita en el texto fuente.
+- No inventes información que no esté implícita en el texto fuente (ni en las capturas, si las hay).
 - El quick_guide es un resumen accionable de 3-5 líneas, no la guía completa.
 - Cada pregunta de quiz tiene entre 2 y 4 opciones y respuesta_correcta_index apunta al índice correcto (base 0).
 - Responde completamente en ${languageLabel}, incluyendo todos los campos.
@@ -124,7 +134,18 @@ Reglas estrictas:
     messages: [
       {
         role: "user",
-        content: `Idioma deseado: ${language}\n\nTexto desordenado a convertir en guía:\n\n${rawText}`,
+        // El contenido es una lista de bloques: primero las imágenes (si hay), después
+        // el texto. Claude puede leer varias imágenes en un mismo mensaje sin problema.
+        content: [
+          ...images.map((img) => ({
+            type: "image" as const,
+            source: { type: "base64" as const, media_type: img.mediaType, data: img.base64 },
+          })),
+          {
+            type: "text" as const,
+            text: `Idioma deseado: ${language}\n\nTexto desordenado a convertir en guía:\n\n${rawText}`,
+          },
+        ],
       },
     ],
   });

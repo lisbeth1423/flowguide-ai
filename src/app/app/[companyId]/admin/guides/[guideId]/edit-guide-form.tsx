@@ -103,7 +103,7 @@ export function EditGuideForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 rounded border border-neutral-200 bg-white p-5">
-      <Link href={`/app/${companyId}/admin`} className="text-sm text-neutral-500 hover:underline">
+      <Link href={`/app/${companyId}/admin`} className="text-sm text-muted hover:underline">
         ← Volver a la biblioteca
       </Link>
       {error && <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
@@ -163,7 +163,7 @@ export function EditGuideForm({
         <div className="space-y-2">
           {form.pasos.map((paso, i) => (
             <div key={i} className="flex gap-2">
-              <span className="pt-2 text-sm text-neutral-400">{i + 1}.</span>
+              <span className="pt-2 text-sm text-muted">{i + 1}.</span>
               <textarea
                 rows={2}
                 value={paso}
@@ -254,7 +254,7 @@ export function EditGuideForm({
       <button
         type="submit"
         disabled={saving}
-        className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+        className="rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
       >
         {saving ? "Guardando..." : "Guardar cambios"}
       </button>

@@ -3,7 +3,7 @@
 // con un formulario público de registro.
 //
 // Si quieren cambiar el texto, logo o colores de esta pantalla, es este archivo.
-// Los estilos (className="...") son clases de Tailwind CSS: por ejemplo "bg-neutral-900"
+// Los estilos (className="...") son clases de Tailwind CSS: por ejemplo "bg-primary"
 // es un color de fondo, "text-sm" es tamaño de letra chico, etc.
 import { login } from "./actions";
 
@@ -15,10 +15,13 @@ export default async function LoginPage({
   const { error, next } = await searchParams;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-neutral-50 px-4">
+    <main className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm rounded-lg border border-neutral-200 bg-white p-8 shadow-sm">
-        <h1 className="mb-1 text-xl font-semibold text-neutral-900">FlowGuide AI</h1>
-        <p className="mb-6 text-sm text-neutral-500">Ingresa con tu email y contraseña.</p>
+        <h1 className="mb-1 text-xl font-semibold text-foreground">FlowGuide</h1>
+        <p className="mb-1 text-xs font-medium uppercase tracking-wide text-accent">
+          Document. Train. Support. Succeed.
+        </p>
+        <p className="mb-6 text-sm text-muted">Ingresa con tu email y contraseña.</p>
 
         {error && (
           <p className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
@@ -54,7 +57,7 @@ export default async function LoginPage({
           </div>
           <button
             type="submit"
-            className="w-full rounded bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+            className="w-full rounded bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary/90"
           >
             Entrar
           </button>

@@ -1,70 +1,194 @@
 // Endpoint: POST /api/guides/generate
 //
-// Lo llama el formulario "Nueva guía" del panel admin
-// (src/app/app/[companyId]/admin/guides/new/new-guide-form.tsx) cuando alguien pega
-// texto desordenado y aprieta "Generar guía".
+// La llaman DOS formularios distintos:
+//   - El del panel admin de una empresa (src/app/app/[companyId]/admin/guides/new/new-guide-form.tsx)
+//     -> crea una guía normal, atada a clientCompanyId.
+//   - El del panel de platform admin (src/app/platform-admin/guides/new/new-generic-guide-form.tsx)
+//     -> crea una guía GENÉRICA (isGeneric=true + system), sin clientCompanyId. Ver
+//     supabase/migrations/0004_generic_content.sql para el porqué de este modelo.
+//
+// En ambos casos acepta 3 formas de dar la fuente de conocimiento (campo "sourceType"):
+//   - "text":     texto pegado a mano (como en el Sprint 1 original).
+//   - "url":      un link — el servidor entra y saca el texto solo (src/lib/extract.ts).
+//   - "document": un PDF subido — se le extrae el texto (src/lib/extract.ts).
+// En cualquiera de los 3 casos, además se pueden adjuntar capturas de pantalla sueltas
+// (campo "images", opcional) que Claude "ve" directamente junto con el texto.
 //
 // Qué hace, paso a paso:
 //   1. Confirma que hay sesión iniciada y que el usuario es "admin" o "editor" de
 //      la empresa (los otros roles no pueden crear guías).
-//   2. Le pasa el texto a la IA (generateGuide, en src/lib/anthropic.ts) para que
-//      devuelva la guía ya estructurada (título, pasos, FAQ, quiz, etc).
-//   3. Guarda todo en la base de datos, en este orden (cada tabla depende de la
+//   2. Según sourceType, obtiene el texto final (pegado, extraído de la URL, o del PDF).
+//   3. Si hay un PDF, lo sube a Supabase Storage (bucket "knowledge-files") para
+//      quedarnos con el original. Las capturas de pantalla sueltas NO se guardan —
+//      se usan solo como referencia para esta generación y después se descartan (ver
+//      nota en el bloque de "images" más abajo si en el futuro quieren persistirlas).
+//   4. Le pasa el texto (+ imágenes) a la IA (generateGuide, en src/lib/anthropic.ts).
+//   5. Guarda todo en la base de datos, en este orden (cada tabla depende de la
 //      anterior): knowledge_sources -> guides -> guide_versions -> quizzes.
 //
-// Nota para quien lo mantenga: estos 4 inserts NO están en una sola transacción de
+// Nota para quien lo mantenga: estos inserts NO están en una sola transacción de
 // base de datos (Supabase desde el cliente normal no lo permite fácilmente). Si algo
-// falla a mitad de camino, puede quedar un registro "huérfano" (por ejemplo, un
-// knowledge_source sin guía). Para el tamaño de este proyecto (MVP) es un riesgo
-// aceptable, pero si en el futuro esto crece mucho, valdría la pena mover esta lógica
-// a una función de base de datos (RPC) que sí sea una transacción real.
+// falla a mitad de camino, puede quedar un registro "huérfano". Para el tamaño de este
+// proyecto (MVP) es un riesgo aceptable — ver detalle en versiones anteriores de este
+// comentario en el historial de git si hace falta más contexto.
+import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-import { generateGuide } from "@/lib/anthropic";
+import { generateGuide, type ImageAttachment } from "@/lib/anthropic";
+import { extractTextFromUrl, extractTextFromPdf } from "@/lib/extract";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+const MAX_IMAGES = 5;
+
+// Supabase Storage rechaza nombres de archivo con espacios, tildes o símbolos raros
+// ("Invalid key"). Esto convierte "Configuración SAP - Guía.pdf" en algo como
+// "Configuracion-SAP-Guia.pdf": normalize("NFD") separa cada letra acentuada en la
+// letra base + un acento suelto (marca "\p{Diacritic}"), que después se descarta; y
+// cualquier otro caracter que no sea letra/número/punto/guion se cambia por un guion.
+function sanitizeFilename(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^a-zA-Z0-9.\-_]/g, "-")
+    .replace(/-+/g, "-");
+}
 
 export async function POST(request: Request) {
   const { supabase, user } = await requireUser();
 
-  const body = await request.json();
-  const clientCompanyId = String(body.clientCompanyId ?? "");
-  const rawText = String(body.rawText ?? "").trim();
-  const language = body.language === "en" ? "en" : "es";
-  const moduleName = body.module ? String(body.module) : null;
+  const form = await request.formData();
+  const clientCompanyId = form.get("clientCompanyId") ? String(form.get("clientCompanyId")) : null;
+  const language = form.get("language") === "en" ? "en" : "es";
+  const moduleName = form.get("module") ? String(form.get("module")) : null;
+  const sourceType = String(form.get("sourceType") ?? "text");
+  // Guías genéricas (contenido compartido de la plataforma, ver
+  // supabase/migrations/0004_generic_content.sql): no tienen empresa dueña, en cambio
+  // tienen un "system" (ej. "SAP Business One") que decide a qué empresas les llega.
+  const isGeneric = form.get("isGeneric") === "true";
+  const system = form.get("system") ? String(form.get("system")).trim() : null;
 
-  if (!clientCompanyId || !rawText) {
-    return NextResponse.json(
-      { error: "clientCompanyId y rawText son obligatorios." },
-      { status: 400 }
-    );
+  if (!["text", "url", "document"].includes(sourceType)) {
+    return NextResponse.json({ error: "sourceType inválido." }, { status: 400 });
   }
 
-  // my_role() es una función de la base de datos (ver supabase/migrations/0002_rls.sql)
-  // que devuelve el rol efectivo del usuario logueado en esa empresa.
-  const { data: role } = await supabase.rpc("my_role", {
-    target_company_id: clientCompanyId,
-  });
-  if (role !== "admin" && role !== "editor") {
-    return NextResponse.json({ error: "No tienes permiso para crear guías en esta empresa." }, { status: 403 });
+  if (isGeneric) {
+    if (!system) {
+      return NextResponse.json({ error: "system es obligatorio para una guía genérica." }, { status: 400 });
+    }
+    const { data: isPlatformAdmin } = await supabase.rpc("is_platform_admin");
+    if (!isPlatformAdmin) {
+      return NextResponse.json({ error: "No tienes permiso para crear contenido genérico." }, { status: 403 });
+    }
+  } else {
+    if (!clientCompanyId) {
+      return NextResponse.json({ error: "clientCompanyId es obligatorio." }, { status: 400 });
+    }
+    // my_role() es una función de la base de datos (ver supabase/migrations/0002_rls.sql)
+    // que devuelve el rol efectivo del usuario logueado en esa empresa.
+    const { data: role } = await supabase.rpc("my_role", { target_company_id: clientCompanyId });
+    if (role !== "admin" && role !== "editor") {
+      return NextResponse.json({ error: "No tienes permiso para crear guías en esta empresa." }, { status: 403 });
+    }
   }
 
-  // Acá es donde se gasta la API key de Anthropic: un texto desordenado entra,
+  // --- Paso 1: resolver el texto final según de dónde viene, y (si aplica) subir el
+  // archivo original a Storage para quedarnos con una copia. Usamos el cliente admin
+  // (service role) para el upload porque el bucket no tiene políticas de RLS propias
+  // todavía — es seguro acá porque ya validamos el rol admin/editor arriba.
+  let finalText: string;
+  let storagePath: string | null = null;
+  const admin = createAdminClient();
+
+  try {
+    if (sourceType === "text") {
+      finalText = String(form.get("rawText") ?? "").trim();
+      if (!finalText) {
+        return NextResponse.json({ error: "rawText es obligatorio para sourceType=text." }, { status: 400 });
+      }
+    } else if (sourceType === "url") {
+      const url = String(form.get("url") ?? "").trim();
+      if (!url) {
+        return NextResponse.json({ error: "url es obligatoria para sourceType=url." }, { status: 400 });
+      }
+      const extracted = await extractTextFromUrl(url);
+      finalText = extracted.text;
+      storagePath = url; // guardamos el link como referencia de origen, no es un path de Storage real
+    } else {
+      const pdfFile = form.get("pdfFile");
+      if (!(pdfFile instanceof File)) {
+        return NextResponse.json({ error: "pdfFile es obligatorio para sourceType=document." }, { status: 400 });
+      }
+      const buffer = Buffer.from(await pdfFile.arrayBuffer());
+      finalText = await extractTextFromPdf(buffer);
+
+      const path = `${clientCompanyId ?? "generic"}/${randomUUID()}-${sanitizeFilename(pdfFile.name)}`;
+      const { error: uploadError } = await admin.storage
+        .from("knowledge-files")
+        .upload(path, buffer, { contentType: "application/pdf" });
+      if (uploadError) {
+        return NextResponse.json({ error: `No se pudo guardar el PDF: ${uploadError.message}` }, { status: 500 });
+      }
+      storagePath = path;
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "No se pudo procesar la fuente.";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+
+  // --- Paso 2: capturas de pantalla sueltas (opcionales, para cualquier sourceType).
+  // Se leen y se codifican en base64 para mandárselas a Claude en el mismo pedido.
+  // OJO: no se suben a Storage ni se guardan en la base — son solo "contexto visual"
+  // para esta generación puntual. Si en el futuro quieren conservarlas (para volver a
+  // verlas después), hay que: 1) subirlas a Storage como se hace con el PDF arriba,
+  // 2) agregar una tabla nueva tipo guide_attachments (guides hoy solo admite UN
+  // knowledge_source por guía, no varios).
+  const imageFiles = form.getAll("images").filter((f): f is File => f instanceof File);
+  if (imageFiles.length > MAX_IMAGES) {
+    return NextResponse.json({ error: `Máximo ${MAX_IMAGES} capturas de pantalla por guía.` }, { status: 400 });
+  }
+
+  const images: ImageAttachment[] = [];
+  for (const file of imageFiles) {
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      return NextResponse.json(
+        { error: `Formato de imagen no soportado: ${file.type}. Usá PNG, JPEG o WEBP.` },
+        { status: 400 }
+      );
+    }
+    const buffer = Buffer.from(await file.arrayBuffer());
+    images.push({
+      mediaType: file.type as ImageAttachment["mediaType"],
+      base64: buffer.toString("base64"),
+    });
+  }
+
+  // Acá es donde se gasta la API key de Anthropic: el texto (+ imágenes) entra,
   // una guía estructurada sale. Puede tardar varios segundos.
   let generated;
   try {
-    generated = await generateGuide(rawText, language);
+    generated = await generateGuide(finalText, language, images);
   } catch (err) {
     console.error("Anthropic generateGuide failed", err);
-    return NextResponse.json({ error: "No se pudo generar la guía con la IA." }, { status: 502 });
+    // Mostramos el motivo real (Anthropic ya devuelve mensajes bastante claros, ej.
+    // "sin crédito" o "modelo no disponible") en vez de un genérico "algo salió mal",
+    // para que quien lo use sepa qué hacer sin tener que mirar los logs del servidor.
+    const detail = err instanceof Error ? err.message : "";
+    return NextResponse.json(
+      { error: `No se pudo generar la guía con la IA.${detail ? ` (${detail})` : ""}` },
+      { status: 502 }
+    );
   }
 
-  // 1) Guarda el texto original tal cual lo pegó el admin (para tener trazabilidad
-  // de "de dónde salió" esta guía).
+  // 1) Guarda el texto (pegado, o extraído del link/PDF) para tener trazabilidad de
+  // "de dónde salió" esta guía.
   const { data: source, error: sourceError } = await supabase
     .from("knowledge_sources")
     .insert({
       client_company_id: clientCompanyId,
-      type: "text",
-      raw_content: rawText,
+      type: sourceType,
+      raw_content: finalText,
+      storage_path: storagePath,
       created_by: user.id,
     })
     .select("id")
@@ -80,6 +204,8 @@ export async function POST(request: Request) {
     .from("guides")
     .insert({
       client_company_id: clientCompanyId,
+      is_generic: isGeneric,
+      system: isGeneric ? system : null,
       knowledge_source_id: source.id,
       title: generated.titulo,
       language,

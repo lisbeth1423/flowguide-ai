@@ -20,7 +20,7 @@ export default async function QuizPage({
     .from("guides")
     .select("title, guide_versions:current_version_id(id)")
     .eq("id", guideId)
-    .eq("client_company_id", companyId)
+    .or(`client_company_id.eq.${companyId},is_generic.eq.true`)
     .maybeSingle();
   if (error) throw error;
   if (!guide) notFound();
@@ -31,18 +31,18 @@ export default async function QuizPage({
     : { data: null };
 
   if (!quiz || !(quiz.questions as unknown[])?.length) {
-    return <p className="text-sm text-neutral-500">Esta guía no tiene examen todavía.</p>;
+    return <p className="text-sm text-muted">Esta guía no tiene examen todavía.</p>;
   }
 
   return (
     <div className="mx-auto max-w-2xl">
       <Link
         href={`/app/${companyId}/learn/guide/${guideId}`}
-        className="text-sm text-neutral-500 hover:underline"
+        className="text-sm text-muted hover:underline"
       >
         ← Volver a la guía
       </Link>
-      <h1 className="mb-6 mt-2 text-xl font-semibold text-neutral-900">Examen: {guide.title}</h1>
+      <h1 className="mb-6 mt-2 text-xl font-semibold text-foreground">Examen: {guide.title}</h1>
 
       <QuizForm
         companyId={companyId}

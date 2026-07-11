@@ -46,7 +46,9 @@ export async function proxy(request: NextRequest) {
   // Rutas que requieren estar logueado. Si agregan una carpeta nueva bajo src/app/
   // que también deba protegerse, hay que sumarla acá.
   const isAppRoute =
-    request.nextUrl.pathname.startsWith("/app") || request.nextUrl.pathname.startsWith("/print");
+    request.nextUrl.pathname.startsWith("/app") ||
+    request.nextUrl.pathname.startsWith("/print") ||
+    request.nextUrl.pathname.startsWith("/platform-admin");
   if (isAppRoute && !user) {
     const loginUrl = new URL("/login", request.url);
     // Guarda a dónde quería ir, para poder mandarlo ahí mismo después de loguearse

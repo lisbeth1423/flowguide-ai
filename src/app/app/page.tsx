@@ -30,8 +30,8 @@ export default async function CompanyPickerPage() {
 
   return (
     <main className="mx-auto max-w-lg px-4 py-12">
-      <h1 className="mb-1 text-xl font-semibold text-neutral-900">Elige una empresa</h1>
-      <p className="mb-6 text-sm text-neutral-500">
+      <h1 className="mb-1 text-xl font-semibold text-foreground">Elige una empresa</h1>
+      <p className="mb-6 text-sm text-muted">
         Tienes acceso a varias empresas cliente. Selecciona con cuál quieres trabajar.
       </p>
 
@@ -51,8 +51,8 @@ export default async function CompanyPickerPage() {
                 type="submit"
                 className="flex w-full items-center justify-between rounded border border-neutral-200 bg-white px-4 py-3 text-left text-sm hover:border-neutral-400"
               >
-                <span className="font-medium text-neutral-900">{company.name}</span>
-                <span className="text-xs uppercase tracking-wide text-neutral-400">
+                <span className="font-medium text-foreground">{company.name}</span>
+                <span className="text-xs uppercase tracking-wide text-muted">
                   {company.role}
                 </span>
               </button>

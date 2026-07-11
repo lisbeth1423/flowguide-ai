@@ -51,13 +51,13 @@ export function QuizForm({
   if (result) {
     return (
       <div className="rounded border border-neutral-200 bg-white p-6 text-center">
-        <p className="text-3xl font-semibold text-neutral-900">{result.score}%</p>
+        <p className="text-3xl font-semibold text-foreground">{result.score}%</p>
         <p className={`mt-1 text-sm font-medium ${result.passed ? "text-green-600" : "text-red-600"}`}>
           {result.passed ? "Aprobado" : "No aprobado"} · {result.correct}/{result.total} correctas
         </p>
         <Link
           href={`/app/${companyId}/learn/guide/${guideId}`}
-          className="mt-4 inline-block rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+          className="mt-4 inline-block rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90"
         >
           Volver a la guía
         </Link>
@@ -71,7 +71,7 @@ export function QuizForm({
 
       {questions.map((q, qi) => (
         <div key={qi} className="rounded border border-neutral-200 bg-white p-4">
-          <p className="mb-3 text-sm font-medium text-neutral-900">
+          <p className="mb-3 text-sm font-medium text-foreground">
             {qi + 1}. {q.pregunta}
           </p>
           <div className="space-y-2">
@@ -97,7 +97,7 @@ export function QuizForm({
       <button
         type="submit"
         disabled={!allAnswered || submitting}
-        className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+        className="rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
       >
         {submitting ? "Enviando..." : "Enviar examen"}
       </button>

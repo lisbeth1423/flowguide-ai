@@ -17,8 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FlowGuide AI",
-  description: "Guías vivas del conocimiento operativo de tu empresa.",
+  title: "FlowGuide",
+  description:
+    "Document. Train. Support. Succeed. — Convierte procesos, conocimiento operativo y casos de soporte en guías paso a paso, flujos, checklists y artículos de ayuda.",
 };
 
 export default function RootLayout({

@@ -25,26 +25,36 @@ export async function PATCH(
 
   // Primero hay que saber a qué empresa pertenece esta guía, para poder chequear el
   // rol del usuario en ESA empresa (una guía de la Empresa A no la puede editar un
-  // editor que solo tiene acceso a la Empresa B).
+  // editor que solo tiene acceso a la Empresa B). Si es una guía GENÉRICA
+  // (is_generic=true, sin empresa dueña) el permiso se chequea distinto: solo un
+  // platform admin puede editarla (ver supabase/migrations/0004_generic_content.sql).
   const { data: guide, error: guideFetchError } = await supabase
     .from("guides")
-    .select("id, client_company_id, current_version_id")
+    .select("id, client_company_id, current_version_id, is_generic")
     .eq("id", guideId)
     .maybeSingle();
   if (guideFetchError) return NextResponse.json({ error: guideFetchError.message }, { status: 500 });
   if (!guide) return NextResponse.json({ error: "Guía no encontrada." }, { status: 404 });
 
-  const { data: role } = await supabase.rpc("my_role", {
-    target_company_id: guide.client_company_id,
-  });
-  if (role !== "admin" && role !== "editor") {
-    return NextResponse.json({ error: "No tienes permiso para editar esta guía." }, { status: 403 });
+  if (guide.is_generic) {
+    const { data: isPlatformAdmin } = await supabase.rpc("is_platform_admin");
+    if (!isPlatformAdmin) {
+      return NextResponse.json({ error: "No tienes permiso para editar contenido genérico." }, { status: 403 });
+    }
+  } else {
+    const { data: role } = await supabase.rpc("my_role", {
+      target_company_id: guide.client_company_id,
+    });
+    if (role !== "admin" && role !== "editor") {
+      return NextResponse.json({ error: "No tienes permiso para editar esta guía." }, { status: 403 });
+    }
   }
 
-  // --- Campos que viven en la tabla "guides" (título, módulo) ---
+  // --- Campos que viven en la tabla "guides" (título, módulo, sistema si es genérica) ---
   const guidePatch: Record<string, unknown> = {};
   if (typeof body.title === "string") guidePatch.title = body.title;
   if (typeof body.module === "string" || body.module === null) guidePatch.module = body.module;
+  if (guide.is_generic && typeof body.system === "string") guidePatch.system = body.system;
 
   if (Object.keys(guidePatch).length) {
     const { error } = await supabase.from("guides").update(guidePatch).eq("id", guideId);

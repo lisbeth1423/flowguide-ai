@@ -41,24 +41,24 @@ export default async function PrintGuidePage({
         <PrintButton />
       </div>
 
-      <h1 className="mb-1 text-2xl font-semibold text-neutral-900">{guide.title}</h1>
-      {guide.module && <p className="mb-6 text-sm text-neutral-500">Módulo: {guide.module}</p>}
+      <h1 className="mb-1 text-2xl font-semibold text-foreground">{guide.title}</h1>
+      {guide.module && <p className="mb-6 text-sm text-muted">Módulo: {guide.module}</p>}
 
       <section className="mb-6">
-        <h2 className="mb-1 text-sm font-semibold uppercase text-neutral-500">Quick guide</h2>
+        <h2 className="mb-1 text-sm font-semibold uppercase text-muted">Quick guide</h2>
         <p className="whitespace-pre-line text-sm text-neutral-800">{version.quick_guide}</p>
       </section>
 
       {version.objetivo && (
         <section className="mb-6">
-          <h2 className="mb-1 text-sm font-semibold uppercase text-neutral-500">Objetivo</h2>
+          <h2 className="mb-1 text-sm font-semibold uppercase text-muted">Objetivo</h2>
           <p className="whitespace-pre-line text-sm text-neutral-800">{version.objetivo}</p>
         </section>
       )}
 
       {version.precondiciones && (
         <section className="mb-6">
-          <h2 className="mb-1 text-sm font-semibold uppercase text-neutral-500">
+          <h2 className="mb-1 text-sm font-semibold uppercase text-muted">
             Precondiciones
           </h2>
           <p className="whitespace-pre-line text-sm text-neutral-800">{version.precondiciones}</p>
@@ -67,7 +67,7 @@ export default async function PrintGuidePage({
 
       {pasos.length > 0 && (
         <section className="mb-6">
-          <h2 className="mb-1 text-sm font-semibold uppercase text-neutral-500">Pasos</h2>
+          <h2 className="mb-1 text-sm font-semibold uppercase text-muted">Pasos</h2>
           <ol className="list-decimal space-y-1 pl-5 text-sm text-neutral-800">
             {pasos.map((p, i) => (
               <li key={i}>{p}</li>
@@ -78,14 +78,14 @@ export default async function PrintGuidePage({
 
       {version.advertencias && (
         <section className="mb-6">
-          <h2 className="mb-1 text-sm font-semibold uppercase text-neutral-500">Advertencias</h2>
+          <h2 className="mb-1 text-sm font-semibold uppercase text-muted">Advertencias</h2>
           <p className="whitespace-pre-line text-sm text-neutral-800">{version.advertencias}</p>
         </section>
       )}
 
       {version.resultado_esperado && (
         <section className="mb-6">
-          <h2 className="mb-1 text-sm font-semibold uppercase text-neutral-500">
+          <h2 className="mb-1 text-sm font-semibold uppercase text-muted">
             Resultado esperado
           </h2>
           <p className="whitespace-pre-line text-sm text-neutral-800">
@@ -96,13 +96,13 @@ export default async function PrintGuidePage({
 
       {faq.length > 0 && (
         <section>
-          <h2 className="mb-2 text-sm font-semibold uppercase text-neutral-500">
+          <h2 className="mb-2 text-sm font-semibold uppercase text-muted">
             Preguntas frecuentes
           </h2>
           <div className="space-y-3">
             {faq.map((f, i) => (
               <div key={i}>
-                <p className="text-sm font-medium text-neutral-900">{f.pregunta}</p>
+                <p className="text-sm font-medium text-foreground">{f.pregunta}</p>
                 <p className="text-sm text-neutral-700">{f.respuesta}</p>
               </div>
             ))}

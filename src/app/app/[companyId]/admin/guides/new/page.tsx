@@ -16,8 +16,8 @@ export default async function NewGuidePage({
 
   return (
     <div className="max-w-2xl">
-      <h1 className="mb-1 text-lg font-semibold text-neutral-900">Nueva guía desde texto</h1>
-      <p className="mb-6 text-sm text-neutral-500">
+      <h1 className="mb-1 text-lg font-semibold text-foreground">Nueva guía desde texto</h1>
+      <p className="mb-6 text-sm text-muted">
         Pega el texto desordenado (chat, notas, transcripción) y la IA genera la guía, el quick
         guide, el FAQ y el quiz.
       </p>

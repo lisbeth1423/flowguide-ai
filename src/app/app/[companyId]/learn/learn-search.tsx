@@ -66,7 +66,7 @@ export function LearnSearch({ companyId }: { companyId: string }) {
         <button
           type="submit"
           disabled={loading}
-          className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50"
+          className="rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
         >
           {loading ? "Buscando..." : "Buscar"}
         </button>
@@ -91,9 +91,9 @@ export function LearnSearch({ companyId }: { companyId: string }) {
                   href={`/app/${companyId}/learn/guide/${c.id}`}
                   className="block rounded border border-neutral-200 bg-white px-4 py-3 hover:border-neutral-400"
                 >
-                  <span className="text-sm font-medium text-neutral-900">{c.title}</span>
+                  <span className="text-sm font-medium text-foreground">{c.title}</span>
                   {c.quick_guide && (
-                    <p className="mt-1 line-clamp-2 text-xs text-neutral-500">{c.quick_guide}</p>
+                    <p className="mt-1 line-clamp-2 text-xs text-muted">{c.quick_guide}</p>
                   )}
                 </Link>
               </li>

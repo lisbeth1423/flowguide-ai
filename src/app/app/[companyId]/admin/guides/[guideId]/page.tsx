@@ -80,8 +80,8 @@ export default async function GuideDetailPage({
   return (
     <div className="max-w-3xl space-y-8">
       <div>
-        <h1 className="mb-1 text-lg font-semibold text-neutral-900">{guide.title}</h1>
-        <p className="text-sm text-neutral-500">
+        <h1 className="mb-1 text-lg font-semibold text-foreground">{guide.title}</h1>
+        <p className="text-sm text-muted">
           Módulo: {guide.module ?? "—"} · Idioma: {guide.language}
         </p>
       </div>
@@ -111,17 +111,17 @@ export default async function GuideDetailPage({
       )}
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold text-neutral-900">
+        <h2 className="mb-2 text-sm font-semibold text-foreground">
           Quién ha leído esta guía ({reads?.length ?? 0})
         </h2>
         {!reads?.length ? (
-          <p className="text-sm text-neutral-500">Todavía nadie la ha abierto.</p>
+          <p className="text-sm text-muted">Todavía nadie la ha abierto.</p>
         ) : (
           <ul className="divide-y divide-neutral-100 rounded border border-neutral-200 bg-white text-sm">
             {reads.map((r) => (
               <li key={r.id} className="flex justify-between px-4 py-2">
                 <span>{emailByUserId.get(r.user_id) ?? r.user_id}</span>
-                <span className="text-neutral-400">{new Date(r.opened_at).toLocaleString()}</span>
+                <span className="text-muted">{new Date(r.opened_at).toLocaleString()}</span>
               </li>
             ))}
           </ul>
@@ -129,11 +129,11 @@ export default async function GuideDetailPage({
       </section>
 
       <section>
-        <h2 className="mb-2 text-sm font-semibold text-neutral-900">
+        <h2 className="mb-2 text-sm font-semibold text-foreground">
           Intentos de examen ({attempts?.length ?? 0})
         </h2>
         {!attempts?.length ? (
-          <p className="text-sm text-neutral-500">Todavía nadie ha tomado el examen.</p>
+          <p className="text-sm text-muted">Todavía nadie ha tomado el examen.</p>
         ) : (
           <ul className="divide-y divide-neutral-100 rounded border border-neutral-200 bg-white text-sm">
             {attempts.map((a) => (
@@ -142,7 +142,7 @@ export default async function GuideDetailPage({
                 <span className={a.passed ? "text-green-600" : "text-red-600"}>
                   {a.score}% {a.passed ? "aprobado" : "no aprobado"}
                 </span>
-                <span className="text-neutral-400">{new Date(a.created_at).toLocaleString()}</span>
+                <span className="text-muted">{new Date(a.created_at).toLocaleString()}</span>
               </li>
             ))}
           </ul>

@@ -1,22 +1,29 @@
 @import "tailwindcss";
 
+/* Paleta de marca de FlowGuide. Estos son los colores DEFAULT — cuando una empresa
+   cliente tiene su propio `theme` guardado en la base de datos (columna
+   client_companies.theme), el layout de esa empresa pisa estas mismas variables con
+   un <div style="--color-primary: ...; ..."> que envuelve toda la pantalla, así que
+   no hace falta tocar este archivo para personalizar colores por cliente.
+   Ver src/app/app/[companyId]/layout.tsx. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f9fb; /* Background */
+  --foreground: #1f2933; /* Text */
+  --color-primary: #17324d; /* Primary Navy */
+  --color-accent: #18a999; /* Guide Teal */
+  --color-accent-soft: #ddf7f3; /* Soft Mint */
+  --color-muted: #64748b; /* Muted Text */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary: var(--color-primary);
+  --color-accent: var(--color-accent);
+  --color-accent-soft: var(--color-accent-soft);
+  --color-muted: var(--color-muted);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
