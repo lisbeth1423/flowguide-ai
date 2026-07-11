@@ -6,6 +6,7 @@
 // Los estilos (className="...") son clases de Tailwind CSS: por ejemplo "bg-primary"
 // es un color de fondo, "text-sm" es tamaño de letra chico, etc.
 import { login } from "./actions";
+import { SubmitButton } from "./submit-button";
 
 export default async function LoginPage({
   searchParams,
@@ -55,12 +56,7 @@ export default async function LoginPage({
               className="w-full rounded border border-neutral-300 px-3 py-2 text-sm focus:border-neutral-500 focus:outline-none"
             />
           </div>
-          <button
-            type="submit"
-            className="w-full rounded bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary/90"
-          >
-            Entrar
-          </button>
+          <SubmitButton>Entrar</SubmitButton>
         </form>
       </div>
     </main>

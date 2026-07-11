@@ -3,7 +3,7 @@
 //   1. Llama a requireCompanyAccess: si el usuario no tiene acceso a esta empresa,
 //      lo redirige antes de mostrar nada (ver src/lib/auth.ts).
 //   2. Dibuja el encabezado con el nombre de la empresa, el rol del usuario, y los
-//      links de navegación (Aprender / Admin / Cambiar empresa / Salir, más los
+//      links de navegación (Inicio / Admin / Cambiar empresa / Salir, más los
 //      condicionales de abajo).
 //
 // El link "Admin" solo se muestra si canManageGuides(role) da true (o sea, admin o
@@ -14,10 +14,11 @@
 // Si quieren cambiar el menú de arriba (agregar un link nuevo, cambiar el orden),
 // es en el <nav> de acá abajo.
 //
-// El nombre de la empresa/marca (arriba a la izquierda) es un link a "Aprender" —
-// es el "botón Home": el patrón habitual en casi cualquier sitio es que el logo/marca
-// lleve al inicio, así que lo hicimos clicable en vez de agregar un link de texto
-// "Inicio" aparte.
+// El nombre de la empresa/marca (arriba a la izquierda) también es un link al inicio
+// (el patrón habitual de "el logo lleva al inicio"), pero además hay un link de texto
+// "Inicio" explícito en el menú — el logo clicable solo no era lo bastante
+// visible/obvio. Los dos apuntan a la misma pantalla (Aprender), así que no hace
+// falta un link "Aprender" aparte.
 //
 // El <div style={themeCssVars(...)}> de acá abajo es lo que permite que cada empresa
 // tenga sus propios colores de marca: si company.theme tiene algo guardado, pisa las
@@ -53,7 +54,7 @@ export default async function CompanyLayout({
           </Link>
           <nav className="flex items-center gap-4 text-sm">
             <Link href={`/app/${companyId}/learn`} className="text-neutral-600 hover:text-foreground">
-              Aprender
+              Inicio
             </Link>
             {canManageGuides(role) && (
               <Link href={`/app/${companyId}/admin`} className="text-neutral-600 hover:text-foreground">
