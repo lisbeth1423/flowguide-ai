@@ -8,6 +8,7 @@
 //     "active_company_id" por selectCompany en ./actions.ts) y todavía tiene acceso
 //     a ella, lo mandamos ahí directo también.
 //   - Si no aplica ninguna de las anteriores, recién ahí se muestra la lista para elegir.
+import Image from "next/image";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAccessibleCompanies } from "@/lib/auth";
@@ -30,6 +31,7 @@ export default async function CompanyPickerPage() {
 
   return (
     <main className="mx-auto max-w-lg px-4 py-12">
+      <Image src="/logo-horizontal.png" alt="FlowGuide" width={140} height={37} priority className="mb-6" />
       <h1 className="mb-1 text-xl font-semibold text-foreground">Elige una empresa</h1>
       <p className="mb-6 text-sm text-muted">
         Tienes acceso a varias empresas cliente. Selecciona con cuál quieres trabajar.

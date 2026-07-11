@@ -2,32 +2,26 @@
 // Hace dos cosas clave:
 //   1. Llama a requireCompanyAccess: si el usuario no tiene acceso a esta empresa,
 //      lo redirige antes de mostrar nada (ver src/lib/auth.ts).
-//   2. Dibuja el encabezado con el nombre de la empresa, el rol del usuario, y los
-//      links de navegación (Inicio / Admin / Cambiar empresa / Salir, más los
-//      condicionales de abajo).
+//   2. Dibuja el encabezado: logo de FlowGuide + nombre de la empresa a la izquierda,
+//      "Inicio" (la única acción de navegación normal, siempre a la vista), y a la
+//      derecha el menú de cuenta (componente UserMenu) con todo lo demás — Admin,
+//      Contenido genérico, Nueva empresa, Cambiar empresa, Salir. Esas son acciones
+//      administrativas/sensibles, así que quedan un clic más lejos en vez de sueltas
+//      en la barra principal, mezcladas con la navegación de todos los días.
 //
-// El link "Admin" solo se muestra si canManageGuides(role) da true (o sea, admin o
-// editor) — así un "aprendiz" ni siquiera ve la opción de entrar al panel admin.
-// "Contenido genérico" solo aparece si es platform admin, "+ Nueva empresa" solo si
-// es partner admin de algún partner (ver supabase/migrations/0006_partner_creates_companies.sql).
-//
-// Si quieren cambiar el menú de arriba (agregar un link nuevo, cambiar el orden),
-// es en el <nav> de acá abajo.
-//
-// El nombre de la empresa/marca (arriba a la izquierda) también es un link al inicio
-// (el patrón habitual de "el logo lleva al inicio"), pero además hay un link de texto
-// "Inicio" explícito en el menú — el logo clicable solo no era lo bastante
-// visible/obvio. Los dos apuntan a la misma pantalla (Aprender), así que no hace
-// falta un link "Aprender" aparte.
+// El logo (public/logo-horizontal.png) queda SIEMPRE visible arriba a la izquierda,
+// en todas las pantallas que pasan por este layout — es la única marca fija del sitio
+// hoy (el login tiene su propio logo aparte, ver src/app/login/page.tsx).
 //
 // El <div style={themeCssVars(...)}> de acá abajo es lo que permite que cada empresa
 // tenga sus propios colores de marca: si company.theme tiene algo guardado, pisa las
 // variables CSS de color solo para esta pantalla para abajo (ver src/lib/auth.ts y
 // src/app/globals.css). Si company.theme es null, no pisa nada y se ve con los
 // colores default de FlowGuide.
+import Image from "next/image";
 import Link from "next/link";
 import { requireCompanyAccess, canManageGuides, getAdminPartners, themeCssVars, type CompanyTheme } from "@/lib/auth";
-import { logout } from "@/app/login/actions";
+import { UserMenu } from "./user-menu";
 
 export default async function CompanyLayout({
   children,
@@ -37,7 +31,7 @@ export default async function CompanyLayout({
   params: Promise<{ companyId: string }>;
 }) {
   const { companyId } = await params;
-  const { supabase, company, role } = await requireCompanyAccess(companyId);
+  const { supabase, user, company, role } = await requireCompanyAccess(companyId);
   const [{ data: isPlatformAdmin }, adminPartners] = await Promise.all([
     supabase.rpc("is_platform_admin"),
     getAdminPartners(),
@@ -48,37 +42,24 @@ export default async function CompanyLayout({
     <div className="min-h-screen bg-background" style={themeCssVars(company.theme as CompanyTheme | null)}>
       <header className="border-b border-neutral-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <Link href={`/app/${companyId}/learn`} className="block">
-            <p className="text-sm font-semibold text-foreground">{company.name}</p>
-            <p className="text-xs text-muted">FlowGuide · {role}</p>
+          <Link href={`/app/${companyId}/learn`} className="flex items-center gap-3">
+            <Image src="/logo-horizontal.png" alt="FlowGuide" width={120} height={32} priority />
+            <span className="hidden sm:block">
+              <p className="text-sm font-semibold text-foreground">{company.name}</p>
+              <p className="text-xs text-muted">{role}</p>
+            </span>
           </Link>
           <nav className="flex items-center gap-4 text-sm">
             <Link href={`/app/${companyId}/learn`} className="text-neutral-600 hover:text-foreground">
               Inicio
             </Link>
-            {canManageGuides(role) && (
-              <Link href={`/app/${companyId}/admin`} className="text-neutral-600 hover:text-foreground">
-                Admin
-              </Link>
-            )}
-            {isPlatformAdmin && (
-              <Link href="/platform-admin/guides" className="text-neutral-600 hover:text-foreground">
-                Contenido genérico
-              </Link>
-            )}
-            {isPartnerAdmin && (
-              <Link href="/app/new-company" className="text-neutral-600 hover:text-foreground">
-                + Nueva empresa
-              </Link>
-            )}
-            <Link href="/app" className="text-neutral-600 hover:text-foreground">
-              Cambiar empresa
-            </Link>
-            <form action={logout}>
-              <button type="submit" className="text-muted hover:text-neutral-700">
-                Salir
-              </button>
-            </form>
+            <UserMenu
+              email={user.email ?? ""}
+              companyId={companyId}
+              canManageGuides={canManageGuides(role)}
+              isPlatformAdmin={Boolean(isPlatformAdmin)}
+              isPartnerAdmin={isPartnerAdmin}
+            />
           </nav>
         </div>
       </header>

@@ -6,6 +6,7 @@
 // requirePlatformAdmin() corta el paso a cualquiera que no tenga ese rol (ver
 // src/lib/auth.ts y la tabla platform_admins en
 // supabase/migrations/0004_generic_content.sql).
+import Image from "next/image";
 import Link from "next/link";
 import { requirePlatformAdmin } from "@/lib/auth";
 import { logout } from "@/app/login/actions";
@@ -17,9 +18,12 @@ export default async function PlatformAdminLayout({ children }: { children: Reac
     <div className="min-h-screen bg-background">
       <header className="border-b border-neutral-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <div>
-            <p className="text-sm font-semibold text-foreground">Contenido genérico</p>
-            <p className="text-xs text-muted">FlowGuide · platform admin</p>
+          <div className="flex items-center gap-3">
+            <Image src="/logo-horizontal.png" alt="FlowGuide" width={110} height={29} priority />
+            <span>
+              <p className="text-sm font-semibold text-foreground">Contenido genérico</p>
+              <p className="text-xs text-muted">platform admin</p>
+            </span>
           </div>
           <nav className="flex items-center gap-4 text-sm">
             <Link href="/platform-admin/guides" className="text-neutral-600 hover:text-foreground">

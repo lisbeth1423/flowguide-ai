@@ -5,6 +5,7 @@
 // Si quieren cambiar el texto, logo o colores de esta pantalla, es este archivo.
 // Los estilos (className="...") son clases de Tailwind CSS: por ejemplo "bg-primary"
 // es un color de fondo, "text-sm" es tamaño de letra chico, etc.
+import Image from "next/image";
 import { login } from "./actions";
 import { SubmitButton } from "./submit-button";
 
@@ -18,7 +19,7 @@ export default async function LoginPage({
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm rounded-lg border border-neutral-200 bg-white p-8 shadow-sm">
-        <h1 className="mb-1 text-xl font-semibold text-foreground">FlowGuide</h1>
+        <Image src="/logo-horizontal.png" alt="FlowGuide" width={160} height={42} priority className="mb-3" />
         <p className="mb-1 text-xs font-medium uppercase tracking-wide text-accent">
           Document. Train. Support. Succeed.
         </p>
