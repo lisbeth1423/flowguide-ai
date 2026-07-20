@@ -10,12 +10,42 @@ reordenan solos a medida que el negocio lo pida.
 
 ## Ahora
 
-_(vacío — los 3 puntos de esta tanda ya se hicieron, ver "Ya resuelto")_
+- [x] Diagrama Mermaid de los pasos de una guía (gratis, sin IA — código
+      determinístico a partir de `pasos`). Caso simple (lineal) resuelto; ramas
+      (aprobado/rechazado) quedan para cuando exista `step_rules` (ver abajo).
 
 ## Siguiente
 
-- [ ] Pantalla para crear empresas (tenants) nuevas desde el panel admin. Hoy se crean
-      a mano por SQL Editor — no escala más allá de un puñado de clientes.
+- [ ] **Reglas de negocio a nivel de paso** (`step_rules`): hoy `pasos` es un array de
+      strings sueltos. Para soportar bifurcaciones ("si aprobado -> paso X, si
+      rechazado -> paso Y") cada paso necesita un `id` estable y volverse un objeto,
+      no un string. Esto es la base para diagramas Mermaid con ramas y para lógica
+      condicional dentro de una guía.
+- [ ] **Modelo de contenido genérico en 2 niveles**: hoy `guides.is_generic` es un
+      solo nivel (todo lo genérico es visible para cualquier empresa que matchee
+      `system`). Falta separar "FlowGuide Standard" (genérico de toda la plataforma,
+      lo trae FlowGuide) de "genérico del partner" (una empresa consultora sube
+      contenido que comparte solo entre SUS clientes, no con los de otro partner).
+      Necesita una columna nueva (ej. `guides.partner_id` nullable) + ajustar RLS.
+- [ ] **Plantillas de empresa + auto-aprovisionamiento**: que un partner pueda crear
+      una "plantilla" (conjunto de guías genéricas + config típica de un sistema, ej.
+      "plantilla SAP B1 estándar") y al crear una empresa nueva, elegir una plantilla
+      para que arranque con contenido precargado en vez de vacía.
+- [ ] **Fase 0 — entrevista guiada antes de generar la guía**: en vez de generar
+      directo del texto pegado, un flujo de preguntas multi-turno con la IA para
+      llenar huecos típicos (¿quién puede hacer este proceso? ¿qué pasa si falla?
+      ¿hay aprobación de por medio?) antes de generar la guía final. Sube la calidad
+      del output pero es más trabajo de UX (conversación, no un formulario).
+- [ ] **Integración real con SAP Business One (Service Layer)**: sync de datos reales
+      contra el ERP del cliente (auth por cookie de sesión, credenciales cifradas en
+      DB, flujo de aprobación humana antes de aplicar cualquier cambio). Recomendado
+      esperar a tener un cliente piloto real con acceso a un SAP B1 antes de construir
+      esto — es mucho esfuerzo para probar contra un ambiente ficticio.
+- [ ] **Modelo de precios**: decisión de negocio (no de código) que falta definir —
+      por asiento, por empresa cliente, por guía generada, etc. Bloquea terminar el
+      esquema final de cuentas/facturación, así que conviene resolverla antes de
+      invertir tiempo en esa parte del esquema.
+
 - [ ] Convertir "Sistema" (empresa) y los valores de "Módulo" (guías) en listas
       predefinidas con selección múltiple, en vez de texto libre. Evita que un typo
       rompa el match entre empresas y contenido genérico / áreas de usuario.

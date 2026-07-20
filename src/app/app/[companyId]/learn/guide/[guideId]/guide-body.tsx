@@ -5,6 +5,8 @@
 "use client";
 
 import { useState } from "react";
+import { MermaidDiagram } from "./mermaid-diagram";
+import { pasosToMermaid } from "@/lib/mermaid";
 
 type Faq = { pregunta: string; respuesta: string };
 
@@ -66,6 +68,7 @@ export function GuideBody({
                   <li key={i}>{paso}</li>
                 ))}
               </ol>
+              {pasos.length > 1 && <MermaidDiagram chart={pasosToMermaid(pasos)} />}
             </section>
           )}
           {advertencias && (
