@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { SystemSelect } from "@/components/system-select";
 
 type Faq = { pregunta: string; respuesta: string };
 type QuizQuestion = { pregunta: string; opciones: string[]; respuesta_correcta_index: number };
@@ -106,11 +107,7 @@ export function EditGenericGuideForm({ guideId, initial }: { guideId: string; in
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-neutral-700">Sistema</label>
-          <input
-            value={form.system}
-            onChange={(e) => setForm({ ...form, system: e.target.value })}
-            className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
-          />
+          <SystemSelect value={form.system} onChange={(v) => setForm({ ...form, system: v })} />
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-neutral-700">Módulo</label>

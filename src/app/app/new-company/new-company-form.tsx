@@ -4,6 +4,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { SystemSelect } from "@/components/system-select";
 
 export function NewCompanyForm({ partners }: { partners: { id: string; name: string }[] }) {
   const router = useRouter();
@@ -69,13 +70,7 @@ export function NewCompanyForm({ partners }: { partners: { id: string; name: str
         <label className="mb-1 block text-sm font-medium text-neutral-700">
           Sistema (opcional, se puede completar después)
         </label>
-        <input
-          type="text"
-          value={system}
-          onChange={(e) => setSystem(e.target.value)}
-          placeholder="ej. SAP Business One"
-          className="w-full rounded border border-neutral-300 px-3 py-2 text-sm"
-        />
+        <SystemSelect value={system} onChange={setSystem} />
       </div>
 
       <button

@@ -8,6 +8,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadPdfDirect } from "@/lib/upload-pdf";
+import { SystemSelect } from "@/components/system-select";
 
 type SourceType = "text" | "url" | "document";
 
@@ -84,16 +85,12 @@ export function NewGenericGuideForm() {
         <label className="mb-1 block text-sm font-medium text-neutral-700">
           Sistema (obligatorio)
         </label>
-        <input
-          type="text"
-          value={system}
-          onChange={(e) => setSystem(e.target.value)}
-          placeholder="ej. SAP Business One"
-          className="w-full max-w-sm rounded border border-neutral-300 px-3 py-2 text-sm"
-        />
+        <div className="max-w-sm">
+          <SystemSelect value={system} onChange={setSystem} required />
+        </div>
         <p className="mt-1 text-xs text-muted">
-          Tiene que coincidir exactamente con el &quot;Sistema&quot; que cada empresa
-          configura en su panel admin para que le llegue esta guía.
+          Tiene que ser el mismo sistema que cada empresa tiene configurado en su panel
+          admin para que le llegue esta guía.
         </p>
       </div>
 
@@ -149,7 +146,7 @@ export function NewGenericGuideForm() {
             type="file"
             accept="application/pdf"
             onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
-            className="block w-full text-sm"
+            className="block w-full text-sm text-muted file:mr-4 file:cursor-pointer file:rounded file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-primary/90"
           />
         </div>
       )}
@@ -163,7 +160,7 @@ export function NewGenericGuideForm() {
           accept="image/png,image/jpeg,image/webp"
           multiple
           onChange={(e) => setImages(Array.from(e.target.files ?? []).slice(0, 5))}
-          className="block w-full text-sm"
+          className="block w-full text-sm text-muted file:mr-4 file:cursor-pointer file:rounded file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-primary/90"
         />
       </div>
 

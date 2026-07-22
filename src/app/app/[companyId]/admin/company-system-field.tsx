@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { SystemSelect } from "@/components/system-select";
 
 export function CompanySystemField({
   companyId,
@@ -48,16 +49,15 @@ export function CompanySystemField({
         <label className="mb-1 block text-xs font-medium text-neutral-700">
           Sistema que usa esta empresa (ERP/POS)
         </label>
-        <input
-          type="text"
-          value={system}
-          onChange={(e) => {
-            setSystem(e.target.value);
-            setSaved(false); // si vuelve a tocar el campo, el "Guardado" anterior ya no aplica
-          }}
-          placeholder="ej. SAP Business One"
-          className="w-64 rounded border border-neutral-300 px-2 py-1.5 text-sm"
-        />
+        <div className="w-64">
+          <SystemSelect
+            value={system}
+            onChange={(v) => {
+              setSystem(v);
+              setSaved(false); // si vuelve a tocar el campo, el "Guardado" anterior ya no aplica
+            }}
+          />
+        </div>
       </div>
       <button
         type="button"

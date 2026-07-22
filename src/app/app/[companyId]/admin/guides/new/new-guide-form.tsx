@@ -144,7 +144,7 @@ export function NewGuideForm({ companyId }: { companyId: string }) {
             type="file"
             accept="application/pdf"
             onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
-            className="block w-full text-sm"
+            className="block w-full text-sm text-muted file:mr-4 file:cursor-pointer file:rounded file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-primary/90"
           />
           <p className="mt-1 text-xs text-muted">
             Se extrae el texto del PDF. Si el PDF tiene imágenes que necesitás que la IA
@@ -163,7 +163,7 @@ export function NewGuideForm({ companyId }: { companyId: string }) {
           accept="image/png,image/jpeg,image/webp"
           multiple
           onChange={(e) => setImages(Array.from(e.target.files ?? []).slice(0, 5))}
-          className="block w-full text-sm"
+          className="block w-full text-sm text-muted file:mr-4 file:cursor-pointer file:rounded file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-primary/90"
         />
         <p className="mt-1 text-xs text-muted">
           La IA las usa como referencia visual para precisar botones/menús, pero no
