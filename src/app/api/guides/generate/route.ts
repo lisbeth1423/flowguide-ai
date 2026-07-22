@@ -37,6 +37,13 @@ import { generateGuide, type ImageAttachment } from "@/lib/anthropic";
 import { extractTextFromUrl, extractTextFromPdf } from "@/lib/extract";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+// Por defecto Vercel corta una función de servidor a los 10 segundos. Bajar un PDF
+// grande de Storage + extraerle el texto + esperar a Claude puede tardar más que eso
+// fácil — sin esto, Vercel mata la función y devuelve su propia página de error en
+// HTML (no JSON), lo que en el navegador se ve como "Unexpected token '<' ... is not
+// valid JSON". 60s es el máximo permitido en el plan gratuito de Vercel.
+export const maxDuration = 60;
+
 const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MAX_IMAGES = 5;
 
