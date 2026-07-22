@@ -31,7 +31,6 @@
 // falla a mitad de camino, puede quedar un registro "huérfano". Para el tamaño de este
 // proyecto (MVP) es un riesgo aceptable — ver detalle en versiones anteriores de este
 // comentario en el historial de git si hace falta más contexto.
-import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { generateGuide, type ImageAttachment } from "@/lib/anthropic";
@@ -40,19 +39,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MAX_IMAGES = 5;
-
-// Supabase Storage rechaza nombres de archivo con espacios, tildes o símbolos raros
-// ("Invalid key"). Esto convierte "Configuración SAP - Guía.pdf" en algo como
-// "Configuracion-SAP-Guia.pdf": normalize("NFD") separa cada letra acentuada en la
-// letra base + un acento suelto (marca "\p{Diacritic}"), que después se descarta; y
-// cualquier otro caracter que no sea letra/número/punto/guion se cambia por un guion.
-function sanitizeFilename(name: string): string {
-  return name
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .replace(/[^a-zA-Z0-9.\-_]/g, "-")
-    .replace(/-+/g, "-");
-}
 
 export async function POST(request: Request) {
   const { supabase, user } = await requireUser();
@@ -115,21 +101,26 @@ export async function POST(request: Request) {
       finalText = extracted.text;
       storagePath = url; // guardamos el link como referencia de origen, no es un path de Storage real
     } else {
-      const pdfFile = form.get("pdfFile");
-      if (!(pdfFile instanceof File)) {
-        return NextResponse.json({ error: "pdfFile es obligatorio para sourceType=document." }, { status: 400 });
+      // El PDF ya fue subido directo del navegador a Supabase Storage (ver
+      // /api/uploads/pdf-url) — acá solo recibimos la ruta y lo bajamos del lado del
+      // servidor para sacarle el texto. Así el archivo nunca pasa por esta función de
+      // Vercel, que corta pedidos de más de ~4.5 MB.
+      const pdfStoragePath = form.get("pdfStoragePath") ? String(form.get("pdfStoragePath")) : null;
+      if (!pdfStoragePath) {
+        return NextResponse.json({ error: "pdfStoragePath es obligatorio para sourceType=document." }, { status: 400 });
       }
-      const buffer = Buffer.from(await pdfFile.arrayBuffer());
-      finalText = await extractTextFromPdf(buffer);
-
-      const path = `${clientCompanyId ?? "generic"}/${randomUUID()}-${sanitizeFilename(pdfFile.name)}`;
-      const { error: uploadError } = await admin.storage
+      const { data: fileData, error: downloadError } = await admin.storage
         .from("knowledge-files")
-        .upload(path, buffer, { contentType: "application/pdf" });
-      if (uploadError) {
-        return NextResponse.json({ error: `No se pudo guardar el PDF: ${uploadError.message}` }, { status: 500 });
+        .download(pdfStoragePath);
+      if (downloadError || !fileData) {
+        return NextResponse.json(
+          { error: `No se pudo leer el PDF subido: ${downloadError?.message ?? "archivo no encontrado"}` },
+          { status: 500 }
+        );
       }
-      storagePath = path;
+      const buffer = Buffer.from(await fileData.arrayBuffer());
+      finalText = await extractTextFromPdf(buffer);
+      storagePath = pdfStoragePath;
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "No se pudo procesar la fuente.";

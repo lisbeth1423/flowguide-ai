@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { uploadPdfDirect } from "@/lib/upload-pdf";
 
 type SourceType = "text" | "url" | "document";
 
@@ -27,6 +28,7 @@ export function NewGenericGuideForm() {
   const [system, setSystem] = useState("");
   const [module, setModule] = useState("");
   const [loading, setLoading] = useState(false);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const canSubmit =
@@ -42,6 +44,16 @@ export function NewGenericGuideForm() {
     setError(null);
 
     try {
+      // Si hay PDF, se sube DIRECTO a Supabase Storage antes de llamar a
+      // /api/guides/generate (ver src/lib/upload-pdf.ts) — así el archivo nunca pasa
+      // por una función de Vercel, que corta pedidos de más de ~4.5 MB.
+      let pdfStoragePath: string | null = null;
+      if (sourceType === "document" && pdfFile) {
+        setUploadingPdf(true);
+        pdfStoragePath = await uploadPdfDirect(pdfFile, { isGeneric: true });
+        setUploadingPdf(false);
+      }
+
       const formData = new FormData();
       formData.set("isGeneric", "true");
       formData.set("system", system);
@@ -50,7 +62,7 @@ export function NewGenericGuideForm() {
       formData.set("sourceType", sourceType);
       if (sourceType === "text") formData.set("rawText", rawText);
       if (sourceType === "url") formData.set("url", url);
-      if (sourceType === "document" && pdfFile) formData.set("pdfFile", pdfFile);
+      if (sourceType === "document" && pdfStoragePath) formData.set("pdfStoragePath", pdfStoragePath);
       images.forEach((img) => formData.append("images", img));
 
       const res = await fetch("/api/guides/generate", { method: "POST", body: formData });
@@ -59,6 +71,7 @@ export function NewGenericGuideForm() {
       router.push(`/platform-admin/guides/${data.guideId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado.");
+      setUploadingPdf(false);
       setLoading(false);
     }
   }
@@ -185,7 +198,7 @@ export function NewGenericGuideForm() {
         disabled={!canSubmit}
         className="rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
       >
-        {loading ? "Generando guía..." : "Generar guía genérica"}
+        {uploadingPdf ? "Subiendo PDF..." : loading ? "Generando guía..." : "Generar guía genérica"}
       </button>
     </form>
   );
