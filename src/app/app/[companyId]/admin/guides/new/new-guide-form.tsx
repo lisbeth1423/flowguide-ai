@@ -77,6 +77,11 @@ export function NewGuideForm({ companyId }: { companyId: string }) {
       const res = await fetch("/api/guides/generate", { method: "POST", body: formData });
       const data = await readJsonResponse(res);
       if (!res.ok) throw new Error((data.error as string) ?? "Error al generar la guía.");
+      if (data.truncated) {
+        alert(
+          "El documento era muy largo para procesarlo completo a tiempo, así que la guía se generó solo con la primera parte. Si falta contenido importante, dividí el documento en partes más chicas y generá una guía por cada una."
+        );
+      }
       router.push(`/app/${companyId}/admin/guides/${data.guideId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado.");

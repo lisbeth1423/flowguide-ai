@@ -136,6 +136,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
+  // Salvaguarda de tiempo: un texto muy largo (típico de un PDF de manual completo)
+  // hace que la llamada a Claude tarde tanto que Vercel corta la función a los 60s
+  // (ver maxDuration arriba) antes de terminar — eso se sentía como un error críptico
+  // en vez de un resultado, aunque sea parcial. Mejor recortar y avisar con
+  // "truncated: true" en la respuesta, que fallar del todo. 60.000 caracteres es una
+  // estimación conservadora (no una garantía) de cuánto entra cómodo dentro de ese
+  // límite de tiempo.
+  const MAX_SOURCE_CHARS = 60000;
+  const truncated = finalText.length > MAX_SOURCE_CHARS;
+  if (truncated) {
+    finalText = finalText.slice(0, MAX_SOURCE_CHARS);
+  }
+
   // --- Paso 2: capturas de pantalla sueltas (opcionales, para cualquier sourceType).
   // Se leen y se codifican en base64 para mandárselas a Claude en el mismo pedido.
   // OJO: no se suben a Storage ni se guardan en la base — son solo "contexto visual"
@@ -187,7 +200,9 @@ export async function POST(request: Request) {
     .insert({
       client_company_id: clientCompanyId,
       type: sourceType,
-      raw_content: finalText,
+      raw_content: truncated
+        ? `${finalText}\n\n[Nota de FlowGuide: el documento original era más largo — se usó solo esta parte para poder generar la guía dentro del tiempo permitido.]`
+        : finalText,
       storage_path: storagePath,
       created_by: user.id,
     })
@@ -250,5 +265,5 @@ export async function POST(request: Request) {
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
   if (quizError) return NextResponse.json({ error: quizError.message }, { status: 500 });
 
-  return NextResponse.json({ guideId: guide.id, title: generated.titulo });
+  return NextResponse.json({ guideId: guide.id, title: generated.titulo, truncated });
 }
