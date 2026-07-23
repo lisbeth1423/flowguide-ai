@@ -14,7 +14,11 @@ import { requireApiUser } from "@/lib/auth";
 import { extractTextFromPdf } from "@/lib/extract";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export const maxDuration = 30;
+// Igual que en /api/guides/generate: 60s es el máximo permitido en el plan gratuito
+// de Vercel. Le había puesto 30 pensando que extraer texto (sin llamar a Claude) iba
+// a ser rápido siempre, pero un PDF con muchas páginas o fuentes/formato complejo
+// puede tardar más de lo esperado — mejor darle todo el margen posible.
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   const auth = await requireApiUser();
