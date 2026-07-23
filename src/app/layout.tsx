@@ -25,10 +25,26 @@ export const metadata: Metadata = {
 // Vercel llena estas variables solas en cada deploy (no hay que configurar nada) con
 // el commit de git que está corriendo. DEPLOY_TIME se calcula una sola vez, cuando
 // arranca el servidor (no en cada visita), así que marca aproximadamente "cuándo se
-// publicó esta versión" — sirve para que Lisbeth confirme que está viendo la última
+// publicó esta versión" — sirve para confirmar que se está viendo la última
 // actualización y no una versión vieja en caché.
+//
+// Zona horaria fija en America/Santo_Domingo (Vercel corre sus servidores en UTC por
+// defecto, que no es la hora local). Si en algún momento se usa desde otro país,
+// cambiar el valor de TIMEZONE acá abajo.
+const TIMEZONE = "America/Santo_Domingo";
 const DEPLOY_SHA = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "local";
-const DEPLOY_TIME = new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC";
+const DEPLOY_TIME =
+  new Intl.DateTimeFormat("es-DO", {
+    timeZone: TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+    .format(new Date())
+    .replace(",", "") + " RD";
 
 export default function RootLayout({
   children,

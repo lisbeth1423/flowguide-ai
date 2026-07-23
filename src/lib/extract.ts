@@ -15,7 +15,7 @@
 // que tuvieran nada que ver con links. Con el import dinámico, esa carga solo se
 // intenta cuando alguien realmente usa "Link" como fuente.
 import { Readability } from "@mozilla/readability";
-import { PDFParse } from "pdf-parse";
+import { extractText, getDocumentProxy } from "unpdf";
 
 // Descarga una URL y le saca el "texto legible" (el artículo/contenido principal,
 // sin menús, publicidad ni barras laterales) usando Readability — la misma librería
@@ -44,20 +44,27 @@ export async function extractTextFromUrl(url: string): Promise<{ title: string; 
 }
 
 // Extrae el texto de un PDF (no extrae imágenes — eso se maneja aparte, subiendo
-// capturas de pantalla sueltas, ver ADMIN "Nueva guía"; la librería pdf-parse SÍ sabe
-// extraer imágenes embebidas de un PDF con .getImage() si en el futuro quieren esa
-// función completa, pero no la usamos todavía). Si el PDF es un escaneo sin texto real
-// (solo fotos de páginas), pdf-parse no encuentra texto y tiramos error.
+// capturas de pantalla sueltas, ver ADMIN "Nueva guía"). Si el PDF es un escaneo sin
+// texto real (solo fotos de páginas), no encuentra texto y tiramos error.
+//
+// Usa "unpdf" en vez de "pdf-parse": pdf-parse depende por dentro de pdfjs-dist en su
+// modo de RENDERIZADO, que necesita cosas de navegador (DOMMatrix, canvas) que no
+// existen en el servidor y tiraban "ReferenceError: DOMMatrix is not defined" — un
+// error real de Node, no un problema del empaquetador (por eso no se arreglaba
+// marcándolo como "externo" en next.config.ts, a diferencia del problema de jsdom).
+// unpdf trae su propia versión de pdfjs compilada específicamente para
+// server/serverless, sin esa dependencia, para el caso de solo EXTRAER TEXTO (que es
+// lo único que necesitamos acá).
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
-  const parser = new PDFParse({ data: buffer });
-  const result = await parser.getText();
-  const text = result.text?.trim();
+  const pdf = await getDocumentProxy(new Uint8Array(buffer));
+  const { text } = await extractText(pdf, { mergePages: true });
+  const trimmed = text?.trim();
 
-  if (!text) {
+  if (!trimmed) {
     throw new Error(
       "No se pudo extraer texto del PDF (puede ser un PDF escaneado sin texto real, solo imágenes)."
     );
   }
 
-  return text;
+  return trimmed;
 }
