@@ -17,6 +17,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadPdfDirect } from "@/lib/upload-pdf";
 import { readJsonResponse } from "@/lib/fetch-json";
+import { generateGuidesFromText } from "@/lib/generate-guide-parts";
 
 type SourceType = "text" | "url" | "document";
 
@@ -37,6 +38,8 @@ export function NewGuideForm({ companyId }: { companyId: string }) {
   const [module, setModule] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [generatingPart, setGeneratingPart] = useState<{ index: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const canSubmit =
@@ -51,41 +54,76 @@ export function NewGuideForm({ companyId }: { companyId: string }) {
     setError(null);
 
     try {
-      // Si hay PDF, se sube DIRECTO a Supabase Storage antes de llamar a
-      // /api/guides/generate (ver src/lib/upload-pdf.ts) — así el archivo nunca pasa
-      // por una función de Vercel, que corta pedidos de más de ~4.5 MB.
-      let pdfStoragePath: string | null = null;
+      // "url" sigue el camino directo de siempre: una sola llamada a
+      // /api/guides/generate (el servidor extrae el texto del link). Si ese texto
+      // resulta muy largo, el servidor lo recorta y avisa (truncated: true) — no vale
+      // la pena partirlo en varias tandas para este caso, es menos común que un PDF
+      // grande.
+      if (sourceType === "url") {
+        const formData = new FormData();
+        formData.set("clientCompanyId", companyId);
+        formData.set("language", language);
+        formData.set("module", module);
+        formData.set("sourceType", "url");
+        formData.set("url", url);
+        images.forEach((img) => formData.append("images", img));
+
+        const res = await fetch("/api/guides/generate", { method: "POST", body: formData });
+        const data = await readJsonResponse(res);
+        if (!res.ok) throw new Error((data.error as string) ?? "Error al generar la guía.");
+        if (data.truncated) {
+          alert(
+            "El contenido de ese link era muy largo, así que la guía se generó solo con la primera parte."
+          );
+        }
+        router.push(`/app/${companyId}/admin/guides/${data.guideId}`);
+        return;
+      }
+
+      // Para "texto pegado" y "PDF": conseguimos el texto completo primero (pegado a
+      // mano, o extraído del PDF vía /api/guides/extract — rápido, sin IA), y recién
+      // ahí decidimos si hace falta partirlo en varias guías (generateGuidesFromText,
+      // ver src/lib/generate-guide-parts.ts). Así un documento grande no se pierde:
+      // se generan varias guías en vez de una sola cortada a la mitad.
+      let fullText: string;
       if (sourceType === "document" && pdfFile) {
         setUploadingPdf(true);
-        pdfStoragePath = await uploadPdfDirect(pdfFile, { clientCompanyId: companyId });
+        const pdfStoragePath = await uploadPdfDirect(pdfFile, { clientCompanyId: companyId });
         setUploadingPdf(false);
+
+        setExtracting(true);
+        const extractRes = await fetch("/api/guides/extract", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pdfStoragePath }),
+        });
+        const extractData = await readJsonResponse(extractRes);
+        setExtracting(false);
+        if (!extractRes.ok) throw new Error((extractData.error as string) ?? "No se pudo leer el PDF.");
+        fullText = extractData.text as string;
+      } else {
+        fullText = rawText;
       }
 
-      // FormData en vez de JSON porque puede llevar imágenes. No hace falta poner el
-      // header "Content-Type": el navegador arma uno solo con el "boundary" correcto
-      // (el separador entre campos) cuando el body es un FormData.
-      const formData = new FormData();
-      formData.set("clientCompanyId", companyId);
-      formData.set("language", language);
-      formData.set("module", module);
-      formData.set("sourceType", sourceType);
-      if (sourceType === "text") formData.set("rawText", rawText);
-      if (sourceType === "url") formData.set("url", url);
-      if (sourceType === "document" && pdfStoragePath) formData.set("pdfStoragePath", pdfStoragePath);
-      images.forEach((img) => formData.append("images", img));
+      const { guideIds, parts } = await generateGuidesFromText(
+        fullText,
+        { clientCompanyId: companyId, language, module, images },
+        (info) => setGeneratingPart(info)
+      );
 
-      const res = await fetch("/api/guides/generate", { method: "POST", body: formData });
-      const data = await readJsonResponse(res);
-      if (!res.ok) throw new Error((data.error as string) ?? "Error al generar la guía.");
-      if (data.truncated) {
+      if (parts > 1) {
         alert(
-          "El documento era muy largo para procesarlo completo a tiempo, así que la guía se generó solo con la primera parte. Si falta contenido importante, dividí el documento en partes más chicas y generá una guía por cada una."
+          `El contenido era grande, así que se generaron ${parts} guías (una por parte) — las vas a ver en la biblioteca con "(Parte N de ${parts})" en el título.`
         );
+        router.push(`/app/${companyId}/admin`);
+      } else {
+        router.push(`/app/${companyId}/admin/guides/${guideIds[0]}`);
       }
-      router.push(`/app/${companyId}/admin/guides/${data.guideId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado.");
       setUploadingPdf(false);
+      setExtracting(false);
+      setGeneratingPart(null);
       setLoading(false);
     }
   }
@@ -208,7 +246,15 @@ export function NewGuideForm({ companyId }: { companyId: string }) {
         disabled={!canSubmit}
         className="rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
       >
-        {uploadingPdf ? "Subiendo PDF..." : loading ? "Generando guía..." : "Generar guía"}
+        {uploadingPdf
+          ? "Subiendo PDF..."
+          : extracting
+          ? "Leyendo PDF..."
+          : generatingPart
+          ? `Generando parte ${generatingPart.index} de ${generatingPart.total}...`
+          : loading
+          ? "Generando guía..."
+          : "Generar guía"}
       </button>
     </form>
   );

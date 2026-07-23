@@ -62,6 +62,11 @@ export async function POST(request: Request) {
   // tienen un "system" (ej. "SAP Business One") que decide a qué empresas les llega.
   const isGeneric = form.get("isGeneric") === "true";
   const system = form.get("system") ? String(form.get("system")).trim() : null;
+  // Cuando el navegador ya partió un documento grande en varias tandas (ver
+  // chunkText en src/lib/chunk-text.ts), manda algo como "Parte 1 de 3" acá para que
+  // quede identificado en el título — si no, todas las guías generadas de un mismo
+  // documento largo tendrían títulos parecidos y sería difícil distinguirlas.
+  const partLabel = form.get("partLabel") ? String(form.get("partLabel")) : null;
 
   if (!["text", "url", "document"].includes(sourceType)) {
     return NextResponse.json({ error: "sourceType inválido." }, { status: 400 });
@@ -222,7 +227,7 @@ export async function POST(request: Request) {
       is_generic: isGeneric,
       system: isGeneric ? system : null,
       knowledge_source_id: source.id,
-      title: generated.titulo,
+      title: partLabel ? `${generated.titulo} (${partLabel})` : generated.titulo,
       language,
       module: moduleName,
       created_by: user.id,
