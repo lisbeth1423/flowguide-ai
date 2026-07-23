@@ -16,13 +16,15 @@
 // alcanza con "editor" — gestionar usuarios es más sensible que gestionar guías).
 import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireApiUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 async function requireCompanyAdmin(companyId: string) {
-  const { supabase, user } = await requireUser();
+  const auth = await requireApiUser();
+  if (!auth.ok) return { ok: false as const, response: auth.response };
+  const { supabase, user } = auth;
   const { data: role } = await supabase.rpc("my_role", { target_company_id: companyId });
-  return { supabase, user, isAdmin: role === "admin" };
+  return { ok: true as const, supabase, user, isAdmin: role === "admin" };
 }
 
 export async function GET(
@@ -30,7 +32,9 @@ export async function GET(
   { params }: { params: Promise<{ companyId: string }> }
 ) {
   const { companyId } = await params;
-  const { supabase, isAdmin } = await requireCompanyAdmin(companyId);
+  const auth = await requireCompanyAdmin(companyId);
+  if (!auth.ok) return auth.response;
+  const { supabase, isAdmin } = auth;
   if (!isAdmin) return NextResponse.json({ error: "Solo un admin puede ver esto." }, { status: 403 });
 
   const { data: rows, error } = await supabase
@@ -62,7 +66,9 @@ export async function POST(
   { params }: { params: Promise<{ companyId: string }> }
 ) {
   const { companyId } = await params;
-  const { supabase, isAdmin } = await requireCompanyAdmin(companyId);
+  const auth = await requireCompanyAdmin(companyId);
+  if (!auth.ok) return auth.response;
+  const { supabase, isAdmin } = auth;
   if (!isAdmin) return NextResponse.json({ error: "Solo un admin puede invitar usuarios." }, { status: 403 });
 
   const body = await request.json();

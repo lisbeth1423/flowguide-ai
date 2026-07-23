@@ -11,6 +11,7 @@
 //   - aprendiz -> lo mismo que viewer (pensado para el usuario final típico).
 // canManageGuides() es la función que decide si un rol puede entrar al panel admin.
 import { redirect } from "next/navigation";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { CSSProperties } from "react";
 
@@ -39,6 +40,34 @@ export async function requireUser() {
   if (!user) redirect("/login");
 
   return { supabase, user };
+}
+
+// Versión de requireUser() para rutas /api/*. redirect() (de next/navigation) está
+// pensado para páginas — usado adentro de una API route, produce una respuesta HTTP
+// de redirección que el fetch() del navegador SIGUE solo, terminando por traerse el
+// HTML de /login en vez de JSON. Eso se veía en pantalla como el mensaje sin sentido
+// "Unexpected token '<' ... is not valid JSON" cada vez que la sesión ya había
+// expirado (típicamente el error salía en segundos, sin importar qué se estuviera
+// subiendo — no era un problema de tamaño de archivo).
+//
+// Uso: `const auth = await requireApiUser(); if (!auth.ok) return auth.response;`
+export async function requireApiUser() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      ok: false as const,
+      response: NextResponse.json(
+        { error: "Tu sesión expiró. Volvé a iniciar sesión y probá de nuevo." },
+        { status: 401 }
+      ),
+    };
+  }
+
+  return { ok: true as const, supabase, user };
 }
 
 export type AccessibleCompany = {

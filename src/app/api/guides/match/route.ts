@@ -13,11 +13,13 @@
 //   - "multiple": hay varias posibles -> el frontend muestra "¿Te refieres a...?".
 //   - "none": ninguna guía resuelve lo que pide -> el frontend avisa que no encontró nada.
 import { NextResponse } from "next/server";
-import { requireUser, canManageGuides, type Role } from "@/lib/auth";
+import { requireApiUser, canManageGuides, type Role } from "@/lib/auth";
 import { matchGuide } from "@/lib/anthropic";
 
 export async function POST(request: Request) {
-  const { supabase, user } = await requireUser();
+  const auth = await requireApiUser();
+  if (!auth.ok) return auth.response;
+  const { supabase, user } = auth;
   const body = await request.json();
   const clientCompanyId = String(body.clientCompanyId ?? "");
   const query = String(body.query ?? "").trim();

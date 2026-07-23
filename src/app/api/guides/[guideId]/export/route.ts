@@ -10,14 +10,16 @@
 // en src/app/print/[guideId]/page.tsx — son dos caminos separados para el mismo
 // contenido, no hace falta tocar los dos si solo quieren cambiar uno.
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireApiUser } from "@/lib/auth";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ guideId: string }> }
 ) {
   const { guideId } = await params;
-  const { supabase } = await requireUser();
+  const auth = await requireApiUser();
+  if (!auth.ok) return auth.response;
+  const { supabase } = auth;
 
   const { data: guide, error } = await supabase
     .from("guides")

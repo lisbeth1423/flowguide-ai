@@ -5,12 +5,14 @@
 // tiene acceso a otras empresas también — solo borra la fila de user_client_access).
 // Los dos requieren ser "admin" de la empresa.
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireApiUser } from "@/lib/auth";
 
 async function requireCompanyAdmin(companyId: string) {
-  const { supabase } = await requireUser();
+  const auth = await requireApiUser();
+  if (!auth.ok) return { ok: false as const, response: auth.response };
+  const { supabase } = auth;
   const { data: role } = await supabase.rpc("my_role", { target_company_id: companyId });
-  return { supabase, isAdmin: role === "admin" };
+  return { ok: true as const, supabase, isAdmin: role === "admin" };
 }
 
 export async function PATCH(
@@ -18,7 +20,9 @@ export async function PATCH(
   { params }: { params: Promise<{ companyId: string; userId: string }> }
 ) {
   const { companyId, userId } = await params;
-  const { supabase, isAdmin } = await requireCompanyAdmin(companyId);
+  const auth = await requireCompanyAdmin(companyId);
+  if (!auth.ok) return auth.response;
+  const { supabase, isAdmin } = auth;
   if (!isAdmin) return NextResponse.json({ error: "Solo un admin puede editar usuarios." }, { status: 403 });
 
   const body = await request.json();
@@ -45,7 +49,9 @@ export async function DELETE(
   { params }: { params: Promise<{ companyId: string; userId: string }> }
 ) {
   const { companyId, userId } = await params;
-  const { supabase, isAdmin } = await requireCompanyAdmin(companyId);
+  const auth = await requireCompanyAdmin(companyId);
+  if (!auth.ok) return auth.response;
+  const { supabase, isAdmin } = auth;
   if (!isAdmin) return NextResponse.json({ error: "Solo un admin puede quitar usuarios." }, { status: 403 });
 
   const { error } = await supabase

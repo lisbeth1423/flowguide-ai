@@ -13,14 +13,16 @@
 // Todos los campos del "body" son opcionales: solo actualiza lo que venga en la
 // petición (por eso tantos "if" antes de armar guidePatch/versionPatch).
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireApiUser } from "@/lib/auth";
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ guideId: string }> }
 ) {
   const { guideId } = await params;
-  const { supabase } = await requireUser();
+  const auth = await requireApiUser();
+  if (!auth.ok) return auth.response;
+  const { supabase } = auth;
   const body = await request.json();
 
   // Primero hay que saber a qué empresa pertenece esta guía, para poder chequear el

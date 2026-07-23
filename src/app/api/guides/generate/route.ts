@@ -32,7 +32,7 @@
 // proyecto (MVP) es un riesgo aceptable — ver detalle en versiones anteriores de este
 // comentario en el historial de git si hace falta más contexto.
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireApiUser } from "@/lib/auth";
 import { generateGuide, type ImageAttachment } from "@/lib/anthropic";
 import { extractTextFromUrl, extractTextFromPdf } from "@/lib/extract";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -48,7 +48,9 @@ const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MAX_IMAGES = 5;
 
 export async function POST(request: Request) {
-  const { supabase, user } = await requireUser();
+  const auth = await requireApiUser();
+  if (!auth.ok) return auth.response;
+  const { supabase, user } = auth;
 
   const form = await request.formData();
   const clientCompanyId = form.get("clientCompanyId") ? String(form.get("clientCompanyId")) : null;

@@ -7,14 +7,16 @@
 // cambiar (mismo criterio que canManageGuides, pero restringido a "admin" — un editor
 // no gestiona configuración de la empresa).
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireApiUser } from "@/lib/auth";
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ companyId: string }> }
 ) {
   const { companyId } = await params;
-  const { supabase } = await requireUser();
+  const auth = await requireApiUser();
+  if (!auth.ok) return auth.response;
+  const { supabase } = auth;
   const body = await request.json();
 
   const { data: role } = await supabase.rpc("my_role", { target_company_id: companyId });

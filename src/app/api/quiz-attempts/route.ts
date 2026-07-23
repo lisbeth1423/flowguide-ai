@@ -12,13 +12,15 @@
 //
 // Si quieren cambiar el % mínimo para aprobar, se cambia PASS_THRESHOLD acá abajo.
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireApiUser } from "@/lib/auth";
 
 // Porcentaje mínimo de respuestas correctas para considerar el examen "aprobado".
 const PASS_THRESHOLD = 70;
 
 export async function POST(request: Request) {
-  const { supabase, user } = await requireUser();
+  const auth = await requireApiUser();
+  if (!auth.ok) return auth.response;
+  const { supabase, user } = auth;
   const body = await request.json();
   const quizId = String(body.quizId ?? "");
   const clientCompanyId = String(body.clientCompanyId ?? "");

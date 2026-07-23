@@ -6,10 +6,12 @@
 // user_client_access para quien la crea: un partner_admin ya tiene acceso admin a
 // TODAS las empresas de su partner automáticamente.
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireApiUser } from "@/lib/auth";
 
 export async function POST(request: Request) {
-  const { supabase } = await requireUser();
+  const auth = await requireApiUser();
+  if (!auth.ok) return auth.response;
+  const { supabase } = auth;
   const body = await request.json();
 
   const partnerId = String(body.partnerId ?? "");

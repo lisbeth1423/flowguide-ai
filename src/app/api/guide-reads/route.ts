@@ -10,10 +10,12 @@
 // por si en el futuro se necesita registrar la lectura desde el navegador (por ejemplo,
 // si agregan una app tipo "quiosco" o una vista que no sea una página de servidor).
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireApiUser } from "@/lib/auth";
 
 export async function POST(request: Request) {
-  const { supabase, user } = await requireUser();
+  const auth = await requireApiUser();
+  if (!auth.ok) return auth.response;
+  const { supabase, user } = auth;
   const body = await request.json();
   const guideId = String(body.guideId ?? "");
   const clientCompanyId = String(body.clientCompanyId ?? "");

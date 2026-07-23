@@ -17,7 +17,7 @@
 // acá también — si no, cualquier usuario logueado podría pedir una URL de subida.
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireApiUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // Ver el comentario de la misma función en src/app/api/guides/generate/route.ts —
@@ -31,7 +31,9 @@ function sanitizeFilename(name: string): string {
 }
 
 export async function POST(request: Request) {
-  const { supabase } = await requireUser();
+  const auth = await requireApiUser();
+  if (!auth.ok) return auth.response;
+  const { supabase } = auth;
   const body = await request.json();
   const fileName = String(body.fileName ?? "documento.pdf");
   const clientCompanyId = body.clientCompanyId ? String(body.clientCompanyId) : null;
