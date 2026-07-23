@@ -16,6 +16,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadPdfDirect } from "@/lib/upload-pdf";
+import { readJsonResponse } from "@/lib/fetch-json";
 
 type SourceType = "text" | "url" | "document";
 
@@ -74,8 +75,8 @@ export function NewGuideForm({ companyId }: { companyId: string }) {
       images.forEach((img) => formData.append("images", img));
 
       const res = await fetch("/api/guides/generate", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Error al generar la guía.");
+      const data = await readJsonResponse(res);
+      if (!res.ok) throw new Error((data.error as string) ?? "Error al generar la guía.");
       router.push(`/app/${companyId}/admin/guides/${data.guideId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado.");
