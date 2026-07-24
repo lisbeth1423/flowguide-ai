@@ -187,7 +187,16 @@ export async function POST(request: Request) {
   try {
     generated = await generateGuide(finalText, language, images);
   } catch (err) {
-    console.error("Anthropic generateGuide failed", err);
+    // El log normal de Turbopack en producción viene minificado a una sola línea
+    // (todo el código queda adentro de una función "n" o similar), así que acá
+    // desarmamos el error a mano para que el log tenga algo útil: mensaje, causa
+    // (si la hay) y las primeras líneas del stack.
+    console.error("Anthropic generateGuide failed", {
+      name: err instanceof Error ? err.name : typeof err,
+      message: err instanceof Error ? err.message : String(err),
+      cause: err instanceof Error ? err.cause : undefined,
+      stack: err instanceof Error ? err.stack?.split("\n").slice(0, 6).join(" | ") : undefined,
+    });
     // Mostramos el motivo real (Anthropic ya devuelve mensajes bastante claros, ej.
     // "sin crédito" o "modelo no disponible") en vez de un genérico "algo salió mal",
     // para que quien lo use sepa qué hacer sin tener que mirar los logs del servidor.
