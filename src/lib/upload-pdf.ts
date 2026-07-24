@@ -14,6 +14,7 @@
 //      después a /api/guides/generate, que la usa para leer el PDF del lado del
 //      servidor y sacarle el texto.
 import { createClient } from "@/lib/supabase/client";
+import { readJsonResponse } from "@/lib/fetch-json";
 
 export async function uploadPdfDirect(
   file: File,
@@ -28,13 +29,17 @@ export async function uploadPdfDirect(
       isGeneric: options.isGeneric ?? false,
     }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? "No se pudo preparar la subida del PDF.");
+  // readJsonResponse (en vez de res.json() directo) evita el error crudo del
+  // navegador ("Failed to execute 'json' on 'Response': Unexpected end of JSON
+  // input") si el servidor devuelve una respuesta vacía o cortada — da un mensaje
+  // en español en vez de eso.
+  const data = await readJsonResponse(res);
+  if (!res.ok) throw new Error((data.error as string) ?? "No se pudo preparar la subida del PDF.");
 
   const supabase = createClient();
   const { error } = await supabase.storage
     .from("knowledge-files")
-    .uploadToSignedUrl(data.path, data.token, file, { contentType: "application/pdf" });
+    .uploadToSignedUrl(data.path as string, data.token as string, file, { contentType: "application/pdf" });
   if (error) throw new Error(`No se pudo subir el PDF: ${error.message}`);
 
   return data.path as string;

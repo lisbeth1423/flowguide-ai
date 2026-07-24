@@ -54,6 +54,11 @@ export default async function LearnPage({
     new Set(guides.map((g) => g.module).filter((m): m is string => Boolean(m)))
   );
 
+  // "Preguntas clave": hasta 5 títulos de guías, para que el usuario vea de un
+  // vistazo qué tipo de cosas puede preguntar sin tener que pensar cómo describirlo.
+  // Al hacer clic, buscan directo (ver handleSuggestionClick en learn-search.tsx).
+  const suggestions = guides.slice(0, 5).map((g) => g.title);
+
   return (
     <div className="mx-auto max-w-2xl py-8">
       <h1 className="mb-2 text-xl font-semibold text-foreground">¿Qué necesitas resolver hoy?</h1>
@@ -61,7 +66,7 @@ export default async function LearnPage({
         Descríbelo con tus palabras, no hace falta que uses los términos exactos de la guía.
       </p>
 
-      <LearnSearch companyId={companyId} />
+      <LearnSearch companyId={companyId} suggestions={suggestions} />
 
       {modules.length > 0 && (
         <div className="mt-8">

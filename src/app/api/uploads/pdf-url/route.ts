@@ -20,6 +20,10 @@ import { NextResponse } from "next/server";
 import { requireApiUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+// Esta ruta solo pide un permiso de subida (rápido), pero le damos el mismo margen
+// que a las demás por las dudas — mejor de más que quedarnos cortos otra vez.
+export const maxDuration = 30;
+
 // Ver el comentario de la misma función en src/app/api/guides/generate/route.ts —
 // Supabase Storage rechaza nombres con tildes/espacios/símbolos.
 function sanitizeFilename(name: string): string {

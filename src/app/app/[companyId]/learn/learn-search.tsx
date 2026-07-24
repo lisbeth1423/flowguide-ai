@@ -12,7 +12,13 @@ import Link from "next/link";
 
 type MatchedGuide = { id: string; title: string; quick_guide: string | null };
 
-export function LearnSearch({ companyId }: { companyId: string }) {
+export function LearnSearch({
+  companyId,
+  suggestions = [],
+}: {
+  companyId: string;
+  suggestions?: string[];
+}) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,8 +26,7 @@ export function LearnSearch({ companyId }: { companyId: string }) {
   const [candidates, setCandidates] = useState<MatchedGuide[] | null>(null);
   const [searchedNone, setSearchedNone] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function runSearch(q: string) {
     setLoading(true);
     setError(null);
     setCandidates(null);
@@ -31,7 +36,7 @@ export function LearnSearch({ companyId }: { companyId: string }) {
       const res = await fetch("/api/guides/match", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientCompanyId: companyId, query }),
+        body: JSON.stringify({ clientCompanyId: companyId, query: q }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Error al buscar.");
@@ -50,6 +55,18 @@ export function LearnSearch({ companyId }: { companyId: string }) {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    runSearch(query);
+  }
+
+  // Click en una "pregunta clave": la pone en el buscador y busca directo, como si
+  // el usuario la hubiera escrito y apretado Buscar.
+  function handleSuggestionClick(suggestion: string) {
+    setQuery(suggestion);
+    runSearch(suggestion);
   }
 
   return (
@@ -71,6 +88,22 @@ export function LearnSearch({ companyId }: { companyId: string }) {
           {loading ? "Buscando..." : "Buscar"}
         </button>
       </form>
+
+      {suggestions.length > 0 && !candidates && !searchedNone && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {suggestions.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => handleSuggestionClick(s)}
+              disabled={loading}
+              className="rounded-full border border-neutral-300 bg-white px-3 py-1 text-xs text-neutral-600 hover:border-accent hover:text-accent disabled:opacity-50"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
 
       {error && <p className="mt-3 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 

@@ -77,21 +77,39 @@ export async function PATCH(
   if (Array.isArray(body.pasos)) versionPatch.pasos = body.pasos;
   if (Array.isArray(body.faq)) versionPatch.faq = body.faq;
 
+  // El .select() después de .update() hace que Supabase devuelva las filas que
+  // realmente cambiaron. Si viene vacío pero no hubo "error", es que RLS bloqueó el
+  // update en silencio (pasó de verdad: ver migración 0008) — mejor avisar que
+  // "guardar" mintiendo que funcionó.
   if (Object.keys(versionPatch).length && guide.current_version_id) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("guide_versions")
       .update(versionPatch)
-      .eq("id", guide.current_version_id);
+      .eq("id", guide.current_version_id)
+      .select("id");
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!data?.length) {
+      return NextResponse.json(
+        { error: "No se pudo guardar el contenido (permiso denegado por la base de datos)." },
+        { status: 403 }
+      );
+    }
   }
 
   // --- El quiz (preguntas/opciones/respuesta correcta) vive en su propia tabla ---
   if (Array.isArray(body.quiz) && guide.current_version_id) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("quizzes")
       .update({ questions: body.quiz })
-      .eq("guide_version_id", guide.current_version_id);
+      .eq("guide_version_id", guide.current_version_id)
+      .select("id");
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!data?.length) {
+      return NextResponse.json(
+        { error: "No se pudo guardar el quiz (permiso denegado por la base de datos)." },
+        { status: 403 }
+      );
+    }
   }
 
   return NextResponse.json({ ok: true });
