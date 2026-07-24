@@ -35,23 +35,26 @@ export type GeneratedGuide = {
 };
 
 // Define la forma exacta que Claude tiene que devolver al generar una guía.
-// "maxItems" es lo que limita a máximo 6 pasos / 2 FAQ / 3 preguntas de quiz (esto viene
-// del documento original del proyecto). Si quieren permitir más pasos, se sube el número acá
-// Y TAMBIÉN se actualiza la frase "Máximo 6 pasos..." en el texto "system" de abajo,
-// porque Claude sigue las instrucciones en texto, no solo el schema.
+// "maxItems" en pasos ahora es generoso (25) a propósito: la calidad del producto
+// depende de que cada paso sea UNA sola acción concreta ("clic en botón X"), no un
+// resumen — un proceso real de ERP fácil necesita 15-20 pasos así. El límite viejo de
+// 6 obligaba a Claude a resumir en vez de guiar paso a paso, que es lo opuesto de lo
+// que este producto promete. Si en el futuro hace falta ajustar esto, también hay que
+// revisar el texto "system" de abajo, porque Claude sigue las instrucciones en texto,
+// no solo el schema.
 const GUIDE_SCHEMA = {
   type: "object" as const,
   properties: {
     titulo: { type: "string" },
     objetivo: { type: "string" },
     precondiciones: { type: "string" },
-    pasos: { type: "array", items: { type: "string" }, maxItems: 6 },
+    pasos: { type: "array", items: { type: "string" }, maxItems: 25 },
     advertencias: { type: "string" },
     resultado_esperado: { type: "string" },
     quick_guide: { type: "string" },
     faq: {
       type: "array",
-      maxItems: 2,
+      maxItems: 5,
       items: {
         type: "object",
         properties: { pregunta: { type: "string" }, respuesta: { type: "string" } },
@@ -60,7 +63,7 @@ const GUIDE_SCHEMA = {
     },
     quiz: {
       type: "array",
-      maxItems: 3,
+      maxItems: 5,
       items: {
         type: "object",
         properties: {
@@ -107,17 +110,33 @@ export async function generateGuide(
 
   const response = await client().messages.create({
     model: MODEL,
-    max_tokens: 4096,
+    // Más pasos = más texto de salida. 4096 se quedaba corto para una guía realmente
+    // detallada (15-20 pasos + FAQ + quiz); 8192 da margen sin ser excesivo.
+    max_tokens: 8192,
     // Este texto "system" son las instrucciones/reglas que la IA sigue SIEMPRE,
     // antes de ver el texto del usuario. Es el lugar para ajustar el "tono" o las
     // reglas de la guía generada (por ejemplo, si quieren pedir más ejemplos, o
     // prohibir cierto tipo de contenido).
-    system: `Eres un redactor técnico que convierte texto operativo desordenado (explicaciones de cómo un equipo usa su ERP/POS/sistema de gestión) en una guía clara y verificable. A veces también recibirás capturas de pantalla como referencia adicional: úsalas para precisar nombres de botones/menús exactos, pero la fuente principal de verdad sigue siendo el texto.
+    //
+    // La parte de "PASOS" de acá abajo es la más importante de todo el prompt: es la
+    // diferencia entre un resumen genérico y una guía que alguien puede seguir sin
+    // preguntarle a nadie más. Si la calidad de las guías generadas baja, revisar
+    // primero si esta sección se debilitó sin querer en alguna edición futura.
+    system: `Eres un instructor técnico que convierte texto operativo desordenado (explicaciones de cómo un equipo usa su ERP/POS/sistema de gestión) en una guía EXTREMADAMENTE guiada y específica — pensada para alguien que nunca usó el sistema y tiene que poder seguirla sola, sin preguntarle a nadie, un clic a la vez. A veces también recibirás capturas de pantalla como referencia adicional: úsalas para precisar nombres de botones/menús exactos, pero la fuente principal de verdad sigue siendo el texto.
 
-Reglas estrictas:
-- Máximo 6 pasos, máximo 2 preguntas de FAQ, máximo 3 preguntas de quiz.
-- No inventes información que no esté implícita en el texto fuente (ni en las capturas, si las hay).
-- El quick_guide es un resumen accionable de 3-5 líneas, no la guía completa.
+REGLA MÁS IMPORTANTE — cómo armar "pasos":
+- Cada paso es UNA SOLA acción física y concreta: un clic, completar un campo, elegir una opción de un menú desplegable, o confirmar algo. Nunca combines dos acciones en el mismo paso.
+  Mal: "Configura el módulo de compras y crea la orden."
+  Bien (dos pasos separados): "Hacé clic en el menú \"Compras\"." / "Hacé clic en el botón \"Nueva orden de compra\"."
+- Si el texto fuente (o una captura de pantalla) menciona el nombre EXACTO de un botón, menú, pestaña o campo, usá ESE nombre exacto tal cual aparece, no lo parafrasees.
+- No hay una cantidad "ideal" fija de pasos: usá tantos como haga falta para que cada uno sea una sola acción. Un proceso real de ERP/POS puede necesitar perfectamente 15, 20 o más pasos — eso es lo esperado y correcto, no algo para evitar.
+- Preferí siempre MÁS pasos cortos y específicos antes que MENOS pasos genéricos. Ante la duda de si dividir un paso en dos, dividilo.
+- Usá lenguaje simple y directo, como si se lo explicaras a alguien que jamás usó el sistema — sin dar por sabido ningún término que no hayas explicado o que no venga literal del texto fuente.
+
+Otras reglas estrictas:
+- Máximo 5 preguntas de FAQ, máximo 5 preguntas de quiz.
+- No inventes información que no esté implícita en el texto fuente (ni en las capturas, si las hay). Si el texto no alcanza para detallar un paso al nivel de un solo clic, escribí el paso más específico que el texto permita — no rellenes con suposiciones.
+- El quick_guide es un resumen accionable de 3-5 líneas (el resumen corto), NO reemplaza a "pasos" — "pasos" es la guía completa y detallada.
 - Cada pregunta de quiz tiene entre 2 y 4 opciones y respuesta_correcta_index apunta al índice correcto (base 0).
 - Responde completamente en ${languageLabel}, incluyendo todos los campos.
 - Usa exclusivamente la herramienta emit_guide para responder.`,
