@@ -1,7 +1,14 @@
-// Endpoint: PATCH /api/guides/[guideId]
+// Endpoints: PATCH y DELETE /api/guides/[guideId]
 //
-// Guarda los cambios que un admin/editor hace al editar una guía a mano (formulario
-// en src/app/app/[companyId]/admin/guides/[guideId]/edit-guide-form.tsx).
+// PATCH: guarda los cambios que un admin/editor hace al editar una guía a mano
+// (formulario en src/app/app/[companyId]/admin/guides/[guideId]/edit-guide-form.tsx).
+//
+// DELETE: borra la guía por completo. guide_versions, quizzes y quiz_attempts se
+// borran solos en cascada (ver "on delete cascade" en
+// supabase/migrations/0001_schema.sql) — no hace falta borrarlos a mano acá. El
+// knowledge_source (texto/PDF original) y el archivo en Storage NO se borran, quedan
+// huérfanos — para el tamaño de este proyecto es un costo aceptable de no complicar
+// esto con limpieza de Storage.
 //
 // Nota de diseño importante: esto EDITA la versión actual de la guía "in place" (pisa
 // el contenido de guide_versions), no crea una versión nueva. La tabla guide_versions
@@ -110,6 +117,49 @@ export async function PATCH(
         { status: 403 }
       );
     }
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ guideId: string }> }
+) {
+  const { guideId } = await params;
+  const auth = await requireApiUser();
+  if (!auth.ok) return auth.response;
+  const { supabase } = auth;
+
+  const { data: guide, error: guideFetchError } = await supabase
+    .from("guides")
+    .select("id, client_company_id, is_generic")
+    .eq("id", guideId)
+    .maybeSingle();
+  if (guideFetchError) return NextResponse.json({ error: guideFetchError.message }, { status: 500 });
+  if (!guide) return NextResponse.json({ error: "Guía no encontrada." }, { status: 404 });
+
+  if (guide.is_generic) {
+    const { data: isPlatformAdmin } = await supabase.rpc("is_platform_admin");
+    if (!isPlatformAdmin) {
+      return NextResponse.json({ error: "No tienes permiso para borrar contenido genérico." }, { status: 403 });
+    }
+  } else {
+    const { data: role } = await supabase.rpc("my_role", {
+      target_company_id: guide.client_company_id,
+    });
+    if (role !== "admin" && role !== "editor") {
+      return NextResponse.json({ error: "No tienes permiso para borrar esta guía." }, { status: 403 });
+    }
+  }
+
+  const { data, error } = await supabase.from("guides").delete().eq("id", guideId).select("id");
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!data?.length) {
+    return NextResponse.json(
+      { error: "No se pudo borrar (permiso denegado por la base de datos)." },
+      { status: 403 }
+    );
   }
 
   return NextResponse.json({ ok: true });

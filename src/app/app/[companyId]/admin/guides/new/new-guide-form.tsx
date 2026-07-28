@@ -17,7 +17,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadPdfDirect } from "@/lib/upload-pdf";
 import { readJsonResponse } from "@/lib/fetch-json";
-import { generateGuidesFromText } from "@/lib/generate-guide-parts";
+import { generateGuidesFromChunks, prepareChunks, estimateCostUSD } from "@/lib/generate-guide-parts";
 
 type SourceType = "text" | "url" | "document";
 
@@ -105,8 +105,21 @@ export function NewGuideForm({ companyId }: { companyId: string }) {
         fullText = rawText;
       }
 
-      const { guideIds, parts } = await generateGuidesFromText(
-        fullText,
+      // Estimación de costo ANTES de gastar nada (etapa de prueba con clientes
+      // piloto) — ver src/lib/generate-guide-parts.ts para el detalle del cálculo.
+      const chunks = prepareChunks(fullText);
+      const estimatedCost = estimateCostUSD(chunks);
+      const costMessage =
+        chunks.length > 1
+          ? `Este contenido es grande y se va a generar en ${chunks.length} guías separadas (una por parte). Costo estimado total: ~$${estimatedCost.toFixed(2)} USD. ¿Continuar?`
+          : `Costo estimado de esta generación: ~$${estimatedCost.toFixed(2)} USD. ¿Continuar?`;
+      if (!confirm(costMessage)) {
+        setLoading(false);
+        return;
+      }
+
+      const { guideIds, parts } = await generateGuidesFromChunks(
+        chunks,
         { clientCompanyId: companyId, language, module, images },
         (info) => setGeneratingPart(info)
       );
