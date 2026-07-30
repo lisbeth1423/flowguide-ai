@@ -10,9 +10,20 @@ reordenan solos a medida que el negocio lo pida.
 
 ## Ahora
 
-- [x] Diagrama Mermaid de los pasos de una guía (gratis, sin IA — código
-      determinístico a partir de `pasos`). Caso simple (lineal) resuelto; ramas
-      (aprobado/rechazado) quedan para cuando exista `step_rules` (ver abajo).
+- [ ] **Confirmar que los backups automáticos de Supabase estén activos** (Project
+      Settings → Database → Backups). Es el único componente de toda la arquitectura
+      con datos irremplazables si algo sale mal — ver diagrama de arquitectura de esta
+      sesión. Antes de tener datos reales de clientes en serio, conviene confirmarlo o
+      pasar a Supabase Pro (agrega recuperación punto-en-el-tiempo).
+- [ ] Convertir "Módulo" (de las guías) en lista predefinida con selección múltiple,
+      igual que ya se hizo con "Sistema" (`src/lib/catalog.ts` +
+      `src/components/system-select.tsx`). Mismo riesgo: un typo en Módulo rompe el
+      filtro por área de un aprendiz.
+- [ ] **Límite de uso en `/api/guides/generate`** (rate limiting real, del lado del
+      servidor): hoy la única protección contra gasto excesivo es la confirmación
+      manual de costo en el navegador (fácil de saltear). Antes de tener varios
+      usuarios con acceso real, conviene un tope server-side (ej. X guías por hora por
+      usuario).
 
 ## Siguiente
 
@@ -45,15 +56,10 @@ reordenan solos a medida que el negocio lo pida.
       por asiento, por empresa cliente, por guía generada, etc. Bloquea terminar el
       esquema final de cuentas/facturación, así que conviene resolverla antes de
       invertir tiempo en esa parte del esquema.
-
-- [ ] Convertir "Sistema" (empresa) y los valores de "Módulo" (guías) en listas
-      predefinidas con selección múltiple, en vez de texto libre. Evita que un typo
-      rompa el match entre empresas y contenido genérico / áreas de usuario.
-- [ ] **Límite de uso en `/api/guides/generate`** (rate limiting): hoy cualquier
-      admin/editor puede generar guías sin límite, y cada una gasta crédito real de la
-      API de Anthropic. Antes de tener clientes reales con acceso, conviene poner un
-      tope (ej. X guías por hora por usuario) para que nadie —ni por error, ni por mal
-      uso— te vacíe el crédito de la cuenta.
+- [ ] Upgrade a Vercel Pro y/o Supabase Pro si el uso real con el primer cliente
+      piloto lo justifica: hoy ambos están en plan gratuito (límite de 60s por función
+      en Vercel, auto-pausa por inactividad en Supabase — mitigada con
+      `/api/keepalive`, ver ROADMAP resuelto).
 
 ## Después
 
@@ -87,6 +93,33 @@ Sprint 1 completo + rebrand FlowGuide + colores por empresa + fuentes de texto/l
 Inicio (logo clicable) + confirmación al guardar Sistema + optimización de
 `requireCompanyAccess` (3 consultas en paralelo en vez de una detrás de otra). Ver
 `GUIA_DEL_PROYECTO.md` para el mapa completo del código.
+
+Tanda grande de estabilización (sesión de subida de PDFs de SAP):
+- Diagrama Mermaid de los pasos de una guía (caso lineal).
+- Subida de PDF directo a Supabase Storage desde el navegador (ya no pasa por
+  Vercel, que cortaba en ~4.5MB).
+- Documentos grandes ya no se recortan: se parten solos en varias guías
+  ("Parte N de M"), cada una generada en su propia llamada.
+- Cron diario (`/api/keepalive`) para que Supabase no se auto-pause por inactividad.
+- Arreglado: sesión vencida devolvía HTML en vez de JSON en 11 rutas /api/*
+  (`requireApiUser` en vez de `requireUser` dentro de rutas API).
+- Arreglado: `jsdom` (para extraer texto de links) rompía también la subida de PDFs
+  por un import estático — ahora es dinámico.
+- Cambiado `pdf-parse`/`pdfjs-dist` por `unpdf` (extracción de PDF sin depender de
+  `DOMMatrix`/canvas, que no existen en el servidor).
+- "Sistema" (empresa y guía genérica) pasó de texto libre a lista fija
+  (`src/lib/catalog.ts` + `SystemSelect`) — evita que un typo rompa el match de
+  contenido genérico.
+- **Bug real encontrado y arreglado**: nunca existió permiso de base de datos (RLS)
+  para actualizar el CONTENIDO de una guía (`guide_versions`, `quizzes`) — solo
+  select/insert. Editar pasos/FAQ/quiz nunca se guardaba, en ninguna guía, desde
+  Sprint 1. Migración `0008_guide_content_update_policies.sql`.
+- Botón "Borrar guía" (empresa y genérica).
+- "Preguntas clave" (hasta 5 sugerencias clickeables) en la pantalla de Inicio.
+- Prompt de generación reescrito para pedir pasos granulares (un clic por paso,
+  nombres exactos de botones) en vez de un resumen de máximo 6 pasos.
+- Estimación de costo en USD con confirmación antes de generar (mientras dure la
+  etapa de prueba con el primer cliente piloto).
 
 Nota sobre velocidad: además de la optimización de arriba, una parte de la lentitud
 que se siente en desarrollo es normal — `next dev` compila cada pantalla la PRIMERA
