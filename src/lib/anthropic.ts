@@ -249,3 +249,94 @@ Usa exclusivamente la herramienta emit_match para responder.`,
 
   return toolUse.input as MatchResult;
 }
+
+export type SynthesizedAnswer = {
+  encontrado: boolean;
+  respuesta: string;
+  guia_id: string;
+};
+
+const ANSWER_SCHEMA = {
+  type: "object" as const,
+  properties: {
+    encontrado: { type: "boolean" },
+    // Respuesta directa y específica, citando el/los pasos exactos si aplica. Si
+    // encontrado=false, acá va una explicación corta de que no se encontró.
+    respuesta: { type: "string" },
+    // id de la guía de la que salió la respuesta (vacío "" si encontrado=false).
+    guia_id: { type: "string" },
+  },
+  required: ["encontrado", "respuesta", "guia_id"],
+};
+
+// Segundo paso del "Camino A": una vez que matchGuide() ya redujo la búsqueda a 1-3
+// guías candidatas (comparando solo título/resumen, que es barato), ACÁ se le pasa a
+// Claude el CONTENIDO COMPLETO de esas pocas candidatas (pasos, objetivo, FAQ) para
+// que responda la pregunta de forma directa y concreta, citando el paso exacto —en
+// vez de solo indicar "mirá esta guía" y que el usuario tenga que leerla entera.
+//
+// A propósito NO se le manda el contenido completo de TODAS las guías de la empresa
+// (eso sería carísimo si hay muchas, ej. un manual partido en 10 piezas) — solo de
+// las pocas que ya sobrevivieron el primer filtro.
+export async function answerFromGuides(
+  query: string,
+  guides: {
+    id: string;
+    title: string;
+    objetivo: string | null;
+    pasos: string[];
+    faq: { pregunta: string; respuesta: string }[];
+    resultado_esperado: string | null;
+  }[]
+): Promise<SynthesizedAnswer> {
+  if (guides.length === 0) return { encontrado: false, respuesta: "", guia_id: "" };
+
+  const guidesText = guides
+    .map((g) => {
+      const pasos = g.pasos.map((p, i) => `  ${i + 1}. ${p}`).join("\n");
+      const faq = g.faq.map((f) => `  P: ${f.pregunta}\n  R: ${f.respuesta}`).join("\n");
+      return `--- Guía id: ${g.id} ---
+Título: ${g.title}
+Objetivo: ${g.objetivo ?? ""}
+Pasos:
+${pasos}
+Resultado esperado: ${g.resultado_esperado ?? ""}
+FAQ:
+${faq}`;
+    })
+    .join("\n\n");
+
+  const response = await client().messages.create({
+    model: MODEL,
+    max_tokens: 1536,
+    system: `Respondés la pregunta concreta de un empleado usando EXCLUSIVAMENTE el contenido de las guías que te paso a continuación — nunca inventes pasos, botones o datos que no estén ahí.
+
+Reglas:
+- Si el contenido alcanza para responder, respondé de forma directa y específica, citando el/los pasos exactos (podés copiar el texto del paso tal cual, o resumir varios pasos seguidos si son la respuesta completa). No repitas la guía entera, solo la parte que responde la pregunta.
+- Si el contenido NO alcanza para responder con certeza (la pregunta pide algo que ninguna guía cubre), marca encontrado=false y explicá en una línea que no se encontró información suficiente — no completes con suposiciones.
+- guia_id es el id de la guía de la que sacaste la respuesta (dejalo vacío "" si encontrado=false, o si la respuesta combina más de una guía usá el id de la más relevante).
+- Respondé en el mismo idioma en que está escrita la pregunta del usuario.
+- Usa exclusivamente la herramienta emit_answer para responder.`,
+    tools: [
+      {
+        name: "emit_answer",
+        description: "Registra la respuesta directa a la pregunta del usuario, basada en el contenido de las guías.",
+        input_schema: ANSWER_SCHEMA,
+      },
+    ],
+    tool_choice: { type: "tool", name: "emit_answer" },
+    messages: [
+      {
+        role: "user",
+        content: `Pregunta del usuario:\n"${query}"\n\nContenido de las guías candidatas:\n\n${guidesText}`,
+      },
+    ],
+  });
+
+  const toolUse = response.content.find((block) => block.type === "tool_use");
+  if (!toolUse || toolUse.type !== "tool_use") {
+    return { encontrado: false, respuesta: "", guia_id: "" };
+  }
+
+  return toolUse.input as SynthesizedAnswer;
+}

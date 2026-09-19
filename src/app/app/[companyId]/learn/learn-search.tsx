@@ -1,16 +1,22 @@
 // Buscador de texto libre del usuario final ("Camino A"). Al escribir su pregunta y
 // enviarla, llama a POST /api/guides/match (src/app/api/guides/match/route.ts), que
-// usa la IA para decidir si hay una guía clara, varias posibles, o ninguna:
-//   - "single"   -> se abre esa guía directo (router.push).
-//   - "multiple" -> se muestran 2-4 tarjetas tipo "¿Te refieres a...?".
-//   - "none"     -> se avisa que no se encontró nada.
+// hace DOS pasos con la IA:
+//   1. matchGuide: compara la pregunta contra título/resumen de todas las guías
+//      disponibles, para decidir CUÁLES son candidatas (barato, se hace sobre pocas
+//      líneas de texto por guía).
+//   2. answerFromGuides: le da a Claude el CONTENIDO COMPLETO de esas pocas
+//      candidatas y le pide una respuesta directa y concreta, citando el paso exacto
+//      — en vez de mostrar solo una lista de links para que el usuario lea entero.
+// Esto importa sobre todo cuando una guía grande quedó partida en varias piezas
+// ("Parte N de M"): antes solo se comparaba por título, y una pregunta puntual podía
+// no matchear con ninguna parte aunque la respuesta estuviera adentro.
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 type MatchedGuide = { id: string; title: string; quick_guide: string | null };
+type SynthesizedAnswer = { encontrado: boolean; respuesta: string; guia_id: string };
 
 export function LearnSearch({
   companyId,
@@ -19,17 +25,18 @@ export function LearnSearch({
   companyId: string;
   suggestions?: string[];
 }) {
-  const router = useRouter();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [candidates, setCandidates] = useState<MatchedGuide[] | null>(null);
+  const [answer, setAnswer] = useState<SynthesizedAnswer | null>(null);
   const [searchedNone, setSearchedNone] = useState(false);
 
   async function runSearch(q: string) {
     setLoading(true);
     setError(null);
     setCandidates(null);
+    setAnswer(null);
     setSearchedNone(false);
 
     try {
@@ -41,15 +48,18 @@ export function LearnSearch({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Error al buscar.");
 
-      if (data.match === "single" && data.guides?.[0]) {
-        router.push(`/app/${companyId}/learn/guide/${data.guides[0].id}`);
+      const foundAnswer: SynthesizedAnswer | null = data.answer ?? null;
+      // Guardamos las guías candidatas siempre que vengan (single o multiple): para
+      // "single" sirve para poder linkear "Ver guía completa" desde la respuesta; para
+      // "multiple" además se listan como alternativas debajo.
+      if (data.guides?.length) setCandidates(data.guides);
+
+      if (data.match === "none" || !foundAnswer?.encontrado) {
+        setSearchedNone(true);
         return;
       }
-      if (data.match === "multiple" && data.guides?.length) {
-        setCandidates(data.guides);
-      } else {
-        setSearchedNone(true);
-      }
+
+      setAnswer(foundAnswer);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado.");
     } finally {
@@ -68,6 +78,8 @@ export function LearnSearch({
     setQuery(suggestion);
     runSearch(suggestion);
   }
+
+  const answerSourceGuide = answer ? candidates?.find((c) => c.id === answer.guia_id) : null;
 
   return (
     <div>
@@ -89,7 +101,7 @@ export function LearnSearch({
         </button>
       </form>
 
-      {suggestions.length > 0 && !candidates && !searchedNone && (
+      {suggestions.length > 0 && !candidates && !answer && !searchedNone && (
         <div className="mt-3 flex flex-wrap gap-2">
           {suggestions.map((s) => (
             <button
@@ -107,30 +119,51 @@ export function LearnSearch({
 
       {error && <p className="mt-3 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
+      {answer?.encontrado && (
+        <div className="mt-4 rounded border border-accent/30 bg-accent-soft p-4">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-accent">
+            Respuesta
+          </p>
+          <p className="whitespace-pre-line text-sm text-neutral-800">{answer.respuesta}</p>
+          {answerSourceGuide && (
+            <Link
+              href={`/app/${companyId}/learn/guide/${answerSourceGuide.id}`}
+              className="mt-3 inline-block text-xs font-medium text-accent hover:underline"
+            >
+              Ver guía completa: {answerSourceGuide.title} →
+            </Link>
+          )}
+        </div>
+      )}
+
       {searchedNone && (
         <p className="mt-3 rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          No encontramos ninguna guía que resuelva esto todavía. Prueba con los módulos de abajo o
-          avisa a un administrador.
+          No encontramos una respuesta directa a esto todavía. Prueba con los módulos de abajo,
+          revisá las guías candidatas si aparecen debajo, o avisa a un administrador.
         </p>
       )}
 
-      {candidates && (
+      {candidates && candidates.filter((c) => c.id !== answer?.guia_id).length > 0 && (
         <div className="mt-4">
-          <p className="mb-2 text-sm text-neutral-600">¿Te refieres a alguna de estas?</p>
+          <p className="mb-2 text-sm text-neutral-600">
+            {answer?.encontrado ? "Otras guías relacionadas:" : "¿Te refieres a alguna de estas?"}
+          </p>
           <ul className="space-y-2">
-            {candidates.map((c) => (
-              <li key={c.id}>
-                <Link
-                  href={`/app/${companyId}/learn/guide/${c.id}`}
-                  className="block rounded border border-neutral-200 bg-white px-4 py-3 hover:border-neutral-400"
-                >
-                  <span className="text-sm font-medium text-foreground">{c.title}</span>
-                  {c.quick_guide && (
-                    <p className="mt-1 line-clamp-2 text-xs text-muted">{c.quick_guide}</p>
-                  )}
-                </Link>
-              </li>
-            ))}
+            {candidates
+              .filter((c) => c.id !== answer?.guia_id)
+              .map((c) => (
+                <li key={c.id}>
+                  <Link
+                    href={`/app/${companyId}/learn/guide/${c.id}`}
+                    className="block rounded border border-neutral-200 bg-white px-4 py-3 hover:border-neutral-400"
+                  >
+                    <span className="text-sm font-medium text-foreground">{c.title}</span>
+                    {c.quick_guide && (
+                      <p className="mt-1 line-clamp-2 text-xs text-muted">{c.quick_guide}</p>
+                    )}
+                  </Link>
+                </li>
+              ))}
           </ul>
         </div>
       )}

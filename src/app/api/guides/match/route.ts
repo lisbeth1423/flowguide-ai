@@ -14,7 +14,13 @@
 //   - "none": ninguna guía resuelve lo que pide -> el frontend avisa que no encontró nada.
 import { NextResponse } from "next/server";
 import { requireApiUser, canManageGuides, type Role } from "@/lib/auth";
-import { matchGuide } from "@/lib/anthropic";
+import { matchGuide, answerFromGuides } from "@/lib/anthropic";
+
+// Ahora esta ruta puede hacer DOS llamadas a Claude en cadena (matchGuide y, si hay
+// candidatas, answerFromGuides) — con el default de 10s del plan gratuito de Vercel
+// alcanzaría casi siempre, pero le damos margen para no repetir el mismo problema de
+// otras rutas (ver /api/guides/generate).
+export const maxDuration = 30;
 
 export async function POST(request: Request) {
   const auth = await requireApiUser();
@@ -81,5 +87,37 @@ export async function POST(request: Request) {
   // guía encontrada para que el frontend pueda mostrarlos sin pedirlos de nuevo.
   const matchedGuides = guideSummaries.filter((g) => result.guide_ids.includes(g.id));
 
-  return NextResponse.json({ ...result, guides: matchedGuides });
+  // Segundo paso: si matchGuide encontró candidatas (no "none"), les traemos el
+  // CONTENIDO COMPLETO (solo a esas pocas, nunca a todas las guías de la empresa) y
+  // le pedimos a Claude una respuesta directa y concreta en vez de solo linkear a la
+  // guía — ver answerFromGuides en src/lib/anthropic.ts para el porqué.
+  let answer = null as Awaited<ReturnType<typeof answerFromGuides>> | null;
+  if (result.match !== "none" && matchedGuides.length > 0) {
+    const { data: fullGuides, error: fullError } = await supabase
+      .from("guides")
+      .select(
+        "id, title, guide_versions:current_version_id(objetivo, pasos, faq, resultado_esperado)"
+      )
+      .in(
+        "id",
+        matchedGuides.map((g) => g.id)
+      );
+    if (fullError) return NextResponse.json({ error: fullError.message }, { status: 500 });
+
+    const guidesWithContent = (fullGuides ?? []).map((g) => {
+      const version = Array.isArray(g.guide_versions) ? g.guide_versions[0] : g.guide_versions;
+      return {
+        id: g.id,
+        title: g.title,
+        objetivo: version?.objetivo ?? null,
+        pasos: (version?.pasos as string[] | null) ?? [],
+        faq: (version?.faq as { pregunta: string; respuesta: string }[] | null) ?? [],
+        resultado_esperado: version?.resultado_esperado ?? null,
+      };
+    });
+
+    answer = await answerFromGuides(query, guidesWithContent);
+  }
+
+  return NextResponse.json({ ...result, guides: matchedGuides, answer });
 }
