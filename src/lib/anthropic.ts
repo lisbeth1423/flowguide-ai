@@ -106,7 +106,14 @@ export async function generateGuide(
   language: "es" | "en",
   images: ImageAttachment[] = []
 ): Promise<GeneratedGuide> {
-  const languageLabel = language === "es" ? "español" : "inglés";
+  // Español "neutro" latinoamericano por defecto (no España): evita "vosotros" y
+  // vocabulario específico de España que suena raro para el público real de este
+  // producto (partners/empresas de LatAm). Si en el futuro hace falta variar por
+  // región/cliente, este es el lugar para hacerlo configurable (ver ROADMAP.md).
+  const languageInstruction =
+    language === "es"
+      ? "español latinoamericano neutro (NUNCA España): usá \"ustedes\" en vez de \"vosotros\", y evitá vocabulario específico de España — por ejemplo \"ordenador\" (usá \"computadora\"), \"pulsar\"/\"clicar\" (usá \"hacer clic\"), \"coger\" (usá \"tomar\" o \"agarrar\"), \"móvil\" (usá \"celular\"), \"fichero\" (usá \"archivo\")"
+      : "inglés";
 
   const response = await client().messages.create({
     model: MODEL,
@@ -138,7 +145,7 @@ Otras reglas estrictas:
 - No inventes información que no esté implícita en el texto fuente (ni en las capturas, si las hay). Si el texto no alcanza para detallar un paso al nivel de un solo clic, escribí el paso más específico que el texto permita — no rellenes con suposiciones.
 - El quick_guide es un resumen accionable de 3-5 líneas (el resumen corto), NO reemplaza a "pasos" — "pasos" es la guía completa y detallada.
 - Cada pregunta de quiz tiene entre 2 y 4 opciones y respuesta_correcta_index apunta al índice correcto (base 0).
-- Responde completamente en ${languageLabel}, incluyendo todos los campos.
+- Responde completamente en ${languageInstruction}, incluyendo todos los campos.
 - Usa exclusivamente la herramienta emit_guide para responder.`,
     tools: [
       {
@@ -317,7 +324,7 @@ Reglas:
 - Si el contenido alcanza para responder, respondé de forma directa y específica citando los nombres exactos de menús/botones/campos tal cual aparecen en los pasos. No repitas la guía entera, solo la ruta y los pasos que responden la pregunta.
 - Si el contenido NO alcanza para responder con certeza (la pregunta pide algo que ninguna guía cubre, o le faltan pasos previos que no están en el texto fuente), marca encontrado=false y explicá en una línea que no se encontró información suficiente — no completes con suposiciones ni inventes pasos intermedios que no estén en el contenido.
 - guia_id es el id de la guía de la que sacaste la respuesta (dejalo vacío "" si encontrado=false, o si la respuesta combina más de una guía usá el id de la más relevante).
-- Respondé en el mismo idioma en que está escrita la pregunta del usuario.
+- Respondé en el mismo idioma en que está escrita la pregunta del usuario. Si es español, usá español latinoamericano neutro (nunca España): "ustedes" en vez de "vosotros", "hacer clic" en vez de "pulsar"/"clicar", "computadora" en vez de "ordenador", "celular" en vez de "móvil".
 - Usa exclusivamente la herramienta emit_answer para responder.`,
     tools: [
       {

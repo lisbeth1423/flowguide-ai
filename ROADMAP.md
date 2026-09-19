@@ -63,6 +63,11 @@ reordenan solos a medida que el negocio lo pida.
 
 ## Después
 
+- [ ] Variante de español configurable por empresa (hoy el default es español
+      latinoamericano neutro para todas — evita "vosotros"/vocabulario de España, ver
+      src/lib/anthropic.ts). Si en el futuro hace falta un matiz por país puntual
+      (México, Argentina, etc.), agregar un campo en client_companies y pasarlo al
+      prompt de generateGuide/answerFromGuides.
 - [ ] Editor de guías: poder agregar y quitar pasos, preguntas de FAQ, y preguntas de
       examen (hoy solo se puede editar el texto de lo que generó la IA).
 - [ ] Campo opcional en cada guía para un link externo (YouTube, Loom, Vimeo, o un
