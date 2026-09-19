@@ -47,6 +47,12 @@ export const maxDuration = 60;
 const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MAX_IMAGES = 5;
 
+// Tope de generaciones por persona por hora (~$0.15-0.20 cada una). Lo eligió Lisbeth
+// para la etapa de prueba con el cliente piloto. OJO: un manual grande partido en 10
+// partes ya consume el tope completo de esa hora — si hace falta subir manuales más
+// grandes, subir este número o esperar a la hora siguiente.
+const MAX_GENERATIONS_PER_HOUR = 10;
+
 export async function POST(request: Request) {
   const auth = await requireApiUser();
   if (!auth.ok) return auth.response;
@@ -92,13 +98,35 @@ export async function POST(request: Request) {
     }
   }
 
+  const admin = createAdminClient();
+
+  // --- Límite de uso (rate limiting): cada generación gasta crédito real de la API de
+  // Anthropic, y la confirmación de costo del navegador es fácil de saltear (y no
+  // protege de un bug o abuso). No hace falta una tabla nueva: cada generación ya deja
+  // una fila en knowledge_sources con created_by y created_at, así que contamos las de
+  // esta persona en la última hora. Un PDF grande partido en 10 partes cuenta como 10
+  // (cada parte es una generación). Para cambiar el tope, modificar la constante.
+  const { count: recentCount, error: countError } = await admin
+    .from("knowledge_sources")
+    .select("id", { count: "exact", head: true })
+    .eq("created_by", user.id)
+    .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString());
+  if (countError) return NextResponse.json({ error: countError.message }, { status: 500 });
+  if ((recentCount ?? 0) >= MAX_GENERATIONS_PER_HOUR) {
+    return NextResponse.json(
+      {
+        error: `Llegaste al límite de ${MAX_GENERATIONS_PER_HOUR} generaciones por hora (cada una gasta crédito de la IA). Esperá un rato y volvé a intentar, o pedile a un administrador que suba el límite.`,
+      },
+      { status: 429 }
+    );
+  }
+
   // --- Paso 1: resolver el texto final según de dónde viene, y (si aplica) subir el
   // archivo original a Storage para quedarnos con una copia. Usamos el cliente admin
   // (service role) para el upload porque el bucket no tiene políticas de RLS propias
   // todavía — es seguro acá porque ya validamos el rol admin/editor arriba.
   let finalText: string;
   let storagePath: string | null = null;
-  const admin = createAdminClient();
 
   try {
     if (sourceType === "text") {
